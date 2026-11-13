@@ -34,9 +34,9 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
     <section id="order-lookup" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Order Lookup Card */}
-        <div className="yokocho-panel relative p-6 lg:col-span-6">
-          <span className="pointer-events-none absolute top-0 left-0 h-2.5 w-2.5 border-t border-l border-red-500/80" />
-          <span className="pointer-events-none absolute right-0 bottom-0 h-2.5 w-2.5 border-r border-b border-red-500/80" />
+        <div className="yokocho-panel chamfer-md relative p-6 lg:col-span-6">
+          <span className="pointer-events-none absolute top-0 left-0 h-2.5 w-2.5 border-t border-l border-[#ff2e43]" />
+          <span className="pointer-events-none absolute right-0 bottom-0 h-2.5 w-2.5 border-r border-b border-[#ff2e43]" />
           <div className="flex items-center gap-2 font-mono text-xs tracking-widest text-red-400 uppercase">
             <PackageSearch className="h-4 w-4" />
             <span>注文追跡 // Tra Cứu Đơn Hàng Nhanh</span>
@@ -60,7 +60,7 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
             <button
               type="submit"
               disabled={loading}
-              className="cursor-pointer bg-[#e11d2e] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#ff2e43] disabled:opacity-50"
+              className="chamfer-sm cursor-pointer bg-gradient-to-r from-[#c81628] to-[#ff2e43] px-4 py-2.5 text-xs font-bold text-white shadow-[0_0_16px_rgba(225,29,46,0.45)] transition hover:brightness-115 disabled:opacity-50"
             >
               {loading ? "Đang tìm..." : "Tra Cứu"}
             </button>
@@ -91,9 +91,9 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
         </div>
 
         {/* Customer Night Garage Support & Warranty Card */}
-        <div className="yokocho-panel relative p-6 lg:col-span-6">
-          <span className="pointer-events-none absolute top-0 left-0 h-2.5 w-2.5 border-t border-l border-amber-500/80" />
-          <span className="pointer-events-none absolute right-0 bottom-0 h-2.5 w-2.5 border-r border-b border-amber-500/80" />
+        <div className="yokocho-panel chamfer-md relative p-6 lg:col-span-6">
+          <span className="pointer-events-none absolute top-0 left-0 h-2.5 w-2.5 border-t border-l border-amber-400/90" />
+          <span className="pointer-events-none absolute right-0 bottom-0 h-2.5 w-2.5 border-r border-b border-amber-400/90" />
           <div className="flex items-center gap-2 font-mono text-xs tracking-widest text-amber-400 uppercase">
             <ShieldCheck className="h-4 w-4" />
             <span>夜間保証・取付案内 // Hậu Mãi Xưởng Đêm</span>

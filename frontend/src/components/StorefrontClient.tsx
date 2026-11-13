@@ -27,6 +27,15 @@ const CATEGORIES: Array<{ id: "all" | PartCategory; label: string; jp: string }>
   { id: "jdm-aero", label: "Đồ Chơi Đêm JDM", jp: "夜光" },
 ];
 
+const TICKER_ITEMS = [
+  "赤灯横丁 // KHO QUANG HỌC JDM ĐÊM",
+  "KIỂM GIẮC ZIN PLUG & PLAY 100%",
+  "MẶT CẮT Z-STEP NHẬT KHÔNG CHÓI XE ĐỐI DIỆN",
+  "BI-GẦM 3000K PHÁ SƯƠNG XUYÊN MƯA BÃO",
+  "BẢO HÀNH ĐIỆN TỬ 1 ĐỔI 1 TỚI 36 THÁNG",
+  "FREESHIP TOÀN QUỐC TỪ 3.000.000₫",
+];
+
 export function StorefrontClient({
   initialProducts,
   initialFitments,
@@ -113,6 +122,18 @@ export function StorefrontClient({
         onOpenCart={() => setCartOpen(true)}
       />
 
+      {/* Razor-sharp animated Midnight Garage Spec Ticker */}
+      <div className="overflow-hidden border-b border-red-800/45 bg-[#0b0306] py-2 font-mono text-[11px] tracking-[0.18em] text-zinc-300">
+        <div className="animate-ticker">
+          {[...TICKER_ITEMS, ...TICKER_ITEMS].map((text, idx) => (
+            <span key={`${text}-${idx}`} className="mx-6 inline-flex items-center gap-3 whitespace-nowrap">
+              <span className="h-1.5 w-1.5 bg-[#ff2e43] shadow-[0_0_8px_#ff2e43]" />
+              <span className={idx % 2 === 0 ? "text-amber-300" : "text-zinc-200"}>{text}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
       <main>
         <HeroAlley />
 
@@ -126,12 +147,12 @@ export function StorefrontClient({
 
         {/* Product Catalog Section */}
         <section id="catalog" className="relative mx-auto max-w-7xl px-4 pt-16 pb-14 sm:px-6 lg:px-8">
-          <div className="flex flex-col justify-between gap-5 border-b border-red-900/35 pb-6 md:flex-row md:items-end">
+          <div className="flex flex-col justify-between gap-5 border-b border-red-800/45 pb-6 md:flex-row md:items-end">
             <div>
-              <p className="font-mono text-xs tracking-[0.22em] text-red-400 uppercase">
+              <p className="font-mono text-xs tracking-[0.22em] text-[#ff4d5e] uppercase">
                 夜の陳列棚 // Kệ Hàng Đêm ({filteredProducts.length} sản phẩm)
               </p>
-              <h2 className="mt-1.5 font-[family-name:var(--font-serif-jp)] text-2xl font-bold text-[#ede6e1] sm:text-3xl">
+              <h2 className="mt-1.5 font-[family-name:var(--font-serif-jp)] text-2xl font-bold text-[#f3ede8] sm:text-3xl">
                 Phụ Tùng &amp; Đèn Tăng Sáng Tuyển Chọn
               </h2>
             </div>
@@ -144,14 +165,14 @@ export function StorefrontClient({
                     key={cat.id}
                     type="button"
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`border px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                    className={`chamfer-sm cursor-pointer border px-3.5 py-1.5 text-xs font-semibold transition ${
                       active
-                        ? "border-red-400 bg-[#e11d2e] text-white shadow-[0_0_16px_rgba(225,29,46,0.45)]"
-                        : "border-red-900/45 bg-[#12090d] text-zinc-300 hover:border-red-500/70"
+                        ? "border-red-400 bg-[#e11d2e] text-white shadow-[0_0_18px_rgba(225,29,46,0.55)]"
+                        : "border-red-900/50 bg-[#12080c] text-zinc-200 hover:border-red-500"
                     }`}
                   >
                     <span>{cat.label}</span>
-                    <span className="ml-1.5 font-[family-name:var(--font-serif-jp)] text-[10px] opacity-80">
+                    <span className="ml-1.5 font-[family-name:var(--font-serif-jp)] text-[10px] opacity-85">
                       {cat.jp}
                     </span>
                   </button>
@@ -161,8 +182,8 @@ export function StorefrontClient({
           </div>
 
           {filteredProducts.length === 0 ? (
-            <div className="mt-10 rounded-2xl border border-dashed border-red-900/50 bg-[#0d070a] p-12 text-center">
-              <p className="text-base font-semibold text-zinc-200">
+            <div className="chamfer-md mt-10 border border-dashed border-red-800/60 bg-[#0d0609] p-12 text-center">
+              <p className="text-base font-semibold text-zinc-100">
                 Không có phụ tùng khớp bộ lọc hiện tại
               </p>
               <p className="mt-1 text-xs text-zinc-400">
@@ -175,17 +196,18 @@ export function StorefrontClient({
                   setSelectedMake("");
                   setSearchQuery("");
                 }}
-                className="mt-4 rounded-lg border border-red-600 px-4 py-2 text-xs font-semibold text-red-300 hover:bg-red-950/60 cursor-pointer"
+                className="chamfer-sm mt-4 cursor-pointer border border-red-500 px-4 py-2 text-xs font-semibold text-red-300 hover:bg-red-950/60"
               >
                 Đặt Lại Bộ Lọc
               </button>
             </div>
           ) : (
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredProducts.map((product) => (
+              {filteredProducts.map((product, index) => (
                 <ProductCard
                   key={product.id}
                   product={product}
+                  index={index}
                   onSelect={(p) => setActiveProduct(p)}
                   onQuickAdd={(p) => addToCart(p)}
                 />
@@ -218,4 +240,3 @@ export function StorefrontClient({
     </div>
   );
 }
-

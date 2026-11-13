@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --bg-obsidian: #050305;
-  --bg-lacquer: #0c070a;
-  --bg-panel: #140b10;
+  --bg-obsidian: #040204;
+  --bg-lacquer: #0a0508;
+  --bg-panel: #13090d;
   --crimson: #e11d2e;
   --crimson-bright: #ff2e43;
   --amber-lantern: #f59e0b;
-  --washi-text: #ede6e1;
-  --ash-muted: #9a8d92;
+  --washi-text: #f3ede8;
+  --ash-muted: #9e9196;
 }
 
 html {
@@ -22,47 +22,71 @@ body {
   color: var(--washi-text);
   overflow-x: hidden;
   background-image:
-    radial-gradient(circle at 14% 6%, rgba(225, 29, 46, 0.16), transparent 36%),
-    radial-gradient(circle at 88% 22%, rgba(245, 158, 11, 0.08), transparent 30%),
-    radial-gradient(circle at 50% 88%, rgba(225, 29, 46, 0.12), transparent 44%);
+    radial-gradient(circle at 12% 8%, rgba(225, 29, 46, 0.18), transparent 34%),
+    radial-gradient(circle at 88% 20%, rgba(245, 158, 11, 0.1), transparent 28%),
+    radial-gradient(circle at 50% 88%, rgba(225, 29, 46, 0.14), transparent 44%);
 }
 
-/* Shoji / Kumiko subtle grid texture */
+/* Crisp Shoji / Kumiko hairline grid */
 .kumiko-grid {
   background-image:
-    linear-gradient(to right, rgba(225, 29, 46, 0.055) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(225, 29, 46, 0.055) 1px, transparent 1px);
-  background-size: 52px 52px;
+    linear-gradient(to right, rgba(225, 29, 46, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(225, 29, 46, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
 }
 
-/* Sharp Japanese lacquer panel with crimson atmospheric shadow */
+/* Precision-cut JDM katana chamfer geometry */
+.chamfer-sm {
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+
+.chamfer-md {
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+}
+
+.chamfer-card {
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+}
+
+/* Razor-sharp Japanese lacquer panel with crimson atmospheric shadow */
 .yokocho-panel {
-  background: linear-gradient(180deg, rgba(20, 10, 15, 0.96) 0%, rgba(8, 4, 6, 0.99) 100%);
-  border: 1px solid rgba(225, 29, 46, 0.25);
+  background: linear-gradient(180deg, rgba(19, 9, 14, 0.97) 0%, rgba(7, 3, 6, 0.99) 100%);
+  border: 1px solid rgba(225, 29, 46, 0.34);
   box-shadow:
-    0 20px 50px -20px rgba(0, 0, 0, 0.9),
-    inset 0 1px 0 rgba(255, 100, 110, 0.08);
+    0 24px 60px -22px rgba(0, 0, 0, 0.95),
+    inset 0 1px 0 rgba(255, 130, 140, 0.14),
+    inset 0 -1px 0 rgba(225, 29, 46, 0.12);
 }
 
 .lantern-glow {
   box-shadow:
-    0 0 34px rgba(225, 29, 46, 0.24),
-    inset 0 0 22px rgba(225, 29, 46, 0.09);
+    0 0 38px rgba(225, 29, 46, 0.28),
+    inset 0 0 24px rgba(225, 29, 46, 0.1);
 }
 
 .lantern-card {
   position: relative;
-  background: linear-gradient(180deg, rgba(21, 11, 16, 0.95) 0%, rgba(8, 4, 7, 0.99) 100%);
-  border: 1px solid rgba(225, 29, 46, 0.24);
-  transition: transform 280ms ease, border-color 280ms ease, box-shadow 280ms ease;
+  background: linear-gradient(180deg, rgba(20, 9, 14, 0.98) 0%, rgba(7, 3, 5, 0.99) 100%);
+  border: 1px solid rgba(225, 29, 46, 0.32);
+  box-shadow:
+    0 18px 42px -18px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(255, 120, 130, 0.12);
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), border-color 260ms ease,
+    box-shadow 280ms ease;
 }
 
 .lantern-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(255, 46, 67, 0.72);
+  transform: translateY(-5px);
+  border-color: rgba(255, 46, 67, 0.85);
   box-shadow:
-    0 18px 48px -12px rgba(225, 29, 46, 0.44),
-    0 0 26px rgba(225, 29, 46, 0.2);
+    0 22px 54px -14px rgba(225, 29, 46, 0.5),
+    0 0 32px rgba(225, 29, 46, 0.24),
+    inset 0 1px 0 rgba(255, 180, 185, 0.22);
+}
+
+/* Crisp photograph grading for darker, sharper midnight gloss */
+.photo-razor {
+  filter: contrast(1.1) saturate(1.16) brightness(1.03);
 }
 
 /* Vertical Japanese alley signboard text */
@@ -73,26 +97,48 @@ body {
 
 /* Japanese Noren curtain shadow notch */
 .noren-panel {
-  background: linear-gradient(180deg, #16070b 0%, #0b0406 88%, rgba(225, 29, 46, 0.28) 100%);
-  border-left: 1px solid rgba(225, 29, 46, 0.28);
-  border-right: 1px solid rgba(225, 29, 46, 0.28);
-  border-bottom: 2px solid rgba(225, 29, 46, 0.55);
-  box-shadow: 0 14px 24px -8px rgba(0, 0, 0, 0.85);
+  background: linear-gradient(180deg, #1b070d 0%, #0b0306 86%, rgba(225, 29, 46, 0.38) 100%);
+  border-left: 1px solid rgba(225, 29, 46, 0.35);
+  border-right: 1px solid rgba(225, 29, 46, 0.35);
+  border-bottom: 2px solid rgba(255, 46, 67, 0.72);
+  box-shadow:
+    0 16px 28px -8px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(255, 110, 120, 0.15);
 }
 
 @keyframes lanternSway {
   0%,
   100% {
-    transform: rotate(-2.2deg);
+    transform: rotate(-2.5deg);
   }
   50% {
-    transform: rotate(2.2deg);
+    transform: rotate(2.5deg);
   }
 }
 
 .animate-lantern-sway {
   transform-origin: top center;
-  animation: lanternSway 5.2s ease-in-out infinite;
+  animation: lanternSway 4.8s ease-in-out infinite;
+}
+
+@keyframes lanternBreath {
+  0%,
+  100% {
+    opacity: 0.92;
+    filter: brightness(1) drop-shadow(0 0 14px rgba(225, 29, 46, 0.65));
+  }
+  45% {
+    opacity: 1;
+    filter: brightness(1.18) drop-shadow(0 0 24px rgba(255, 55, 72, 0.95));
+  }
+  70% {
+    opacity: 0.84;
+    filter: brightness(0.95) drop-shadow(0 0 12px rgba(245, 158, 11, 0.55));
+  }
+}
+
+.animate-lantern-breath {
+  animation: lanternBreath 3.4s ease-in-out infinite;
 }
 
 @keyframes neonFlicker {
@@ -106,64 +152,230 @@ body {
   100% {
     opacity: 1;
     text-shadow:
-      0 0 10px rgba(255, 46, 67, 0.85),
-      0 0 24px rgba(225, 29, 46, 0.55);
+      0 0 10px rgba(255, 46, 67, 0.95),
+      0 0 26px rgba(225, 29, 46, 0.65);
   }
   20%,
   24%,
   55% {
-    opacity: 0.62;
+    opacity: 0.58;
     text-shadow: 0 0 4px rgba(225, 29, 46, 0.35);
   }
 }
 
 .neon-flicker {
-  animation: neonFlicker 7s infinite;
+  animation: neonFlicker 6.5s infinite;
 }
 
 @keyframes mistDrift {
   0% {
     transform: translateX(-6%) translateY(0);
-    opacity: 0.35;
+    opacity: 0.38;
   }
   50% {
-    transform: translateX(6%) translateY(-6px);
-    opacity: 0.6;
+    transform: translateX(6%) translateY(-8px);
+    opacity: 0.68;
   }
   100% {
     transform: translateX(-6%) translateY(0);
-    opacity: 0.35;
+    opacity: 0.38;
   }
 }
 
 .animate-mist {
-  animation: mistDrift 14s ease-in-out infinite;
+  animation: mistDrift 12s ease-in-out infinite;
 }
 
-@keyframes rainDrift {
+/* Smooth living Cinemagraph Ken Burns variants */
+@keyframes heroCinemagraph {
   0% {
-    background-position: 0 0;
+    transform: scale(1.03) translate3d(0%, 0%, 0);
+  }
+  50% {
+    transform: scale(1.095) translate3d(-1.4%, -0.8%, 0);
   }
   100% {
-    background-position: -36px 260px;
+    transform: scale(1.03) translate3d(0%, 0%, 0);
   }
 }
 
-.midnight-rain {
-  background-image:
-    repeating-linear-gradient(
-      104deg,
-      transparent,
-      transparent 19px,
-      rgba(255, 255, 255, 0.04) 19px,
-      rgba(255, 255, 255, 0.04) 20px
-    ),
-    repeating-linear-gradient(
-      104deg,
-      transparent,
-      transparent 43px,
-      rgba(225, 29, 46, 0.045) 43px,
-      rgba(225, 29, 46, 0.045) 44px
-    );
-  animation: rainDrift 1.25s linear infinite;
+.animate-hero-cinema {
+  animation: heroCinemagraph 18s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes kenBurnsA {
+  0% {
+    transform: scale(1.02) translate3d(0%, 0%, 0);
+  }
+  50% {
+    transform: scale(1.11) translate3d(-1.8%, -1.2%, 0);
+  }
+  100% {
+    transform: scale(1.02) translate3d(0%, 0%, 0);
+  }
+}
+
+@keyframes kenBurnsB {
+  0% {
+    transform: scale(1.09) translate3d(-1.5%, 0.8%, 0);
+  }
+  50% {
+    transform: scale(1.02) translate3d(1.6%, -1%, 0);
+  }
+  100% {
+    transform: scale(1.09) translate3d(-1.5%, 0.8%, 0);
+  }
+}
+
+@keyframes kenBurnsC {
+  0% {
+    transform: scale(1.04) translate3d(1.2%, -0.8%, 0);
+  }
+  50% {
+    transform: scale(1.12) translate3d(-1.4%, 1%, 0);
+  }
+  100% {
+    transform: scale(1.04) translate3d(1.2%, -0.8%, 0);
+  }
+}
+
+.animate-ken-a {
+  animation: kenBurnsA 13s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-ken-b {
+  animation: kenBurnsB 15s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-ken-c {
+  animation: kenBurnsC 14s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Katana chrome/laser diagonal blade light sweep */
+@keyframes bladeSweep {
+  0%,
+  55% {
+    transform: translateX(-160%) skewX(-24deg);
+    opacity: 0;
+  }
+  65% {
+    opacity: 0.75;
+  }
+  88% {
+    transform: translateX(220%) skewX(-24deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(220%) skewX(-24deg);
+    opacity: 0;
+  }
+}
+
+.animate-blade-sweep {
+  animation: bladeSweep 5.6s cubic-bezier(0.25, 0.8, 0.25, 1) infinite;
+}
+
+/* Sequential LED tail-light scanning wave */
+@keyframes seqScan {
+  0% {
+    transform: translate(-55%, 55%) scale(0.9);
+    opacity: 0.15;
+  }
+  45% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(55%, -55%) scale(1.08);
+    opacity: 0.15;
+  }
+}
+
+.animate-seq-scan {
+  animation: seqScan 2.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Pulsing high-intensity optic lens / fog core flare */
+@keyframes opticPulse {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.92;
+    transform: scale(1.07);
+  }
+}
+
+.animate-optic-pulse {
+  animation: opticPulse 2.8s ease-in-out infinite;
+}
+
+/* Simulator live headlight breathing & wet road reflection shimmer */
+@keyframes roadShimmer {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scaleY(1) translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1.04) translateY(-2px);
+  }
+}
+
+.animate-road-shimmer {
+  animation: roadShimmer 2.6s ease-in-out infinite;
+}
+
+/* Scrolling Japanese midnight garage ticker */
+@keyframes yokochoTicker {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker {
+  display: flex;
+  width: max-content;
+  animation: yokochoTicker 30s linear infinite;
+}
+
+.animate-ticker:hover {
+  animation-play-state: paused;
+}
+
+/* Crisp scanline micro-texture (very subtle) */
+.hud-scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.025) 0px,
+    rgba(255, 255, 255, 0.025) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-lantern-sway,
+  .animate-lantern-breath,
+  .animate-mist,
+  .animate-hero-cinema,
+  .animate-ken-a,
+  .animate-ken-b,
+  .animate-ken-c,
+  .animate-blade-sweep,
+  .animate-seq-scan,
+  .animate-optic-pulse,
+  .animate-road-shimmer,
+  .animate-ticker {
+    animation: none;
+  }
 }

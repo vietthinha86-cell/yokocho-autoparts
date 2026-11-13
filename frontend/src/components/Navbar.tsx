@@ -11,37 +11,37 @@ interface NavbarProps {
 
 export function Navbar({ cartCount, apiConnected, onOpenCart }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-40 border-b border-red-900/35 bg-[#070406]/85 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-red-800/45 bg-[#060305]/88 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         <a href="#top" className="group flex items-center gap-3">
           <ChochinLantern kanji="灯" size="sm" sway={false} />
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-[family-name:var(--font-serif-jp)] text-lg font-bold tracking-[0.14em] text-[#ede6e1] group-hover:text-[#ff4d5e] transition-colors">
+              <span className="font-[family-name:var(--font-serif-jp)] text-lg font-bold tracking-[0.14em] text-[#f3ede8] transition-colors group-hover:text-[#ff4d5e]">
                 AKARI YOKOCHO
               </span>
-              <span className="hidden rounded border border-red-800/60 bg-red-950/60 px-1.5 py-0.5 font-[family-name:var(--font-serif-jp)] text-[11px] text-red-300 sm:inline-block">
+              <span className="hidden border border-red-700/70 bg-red-950/75 px-1.5 py-0.5 font-[family-name:var(--font-serif-jp)] text-[11px] font-bold text-red-300 sm:inline-block">
                 赤灯横丁
               </span>
             </div>
-            <p className="text-[11px] tracking-widest text-[#9a8d92] uppercase">
+            <p className="text-[11px] tracking-widest text-[#9e9196] uppercase">
               Phụ Tùng &amp; Quang Học Đêm Nhật Bản
             </p>
           </div>
         </a>
 
-        <nav className="hidden items-center gap-7 text-sm font-medium text-zinc-300 md:flex">
-          <a href="#fitment" className="hover:text-[#ff4d5e] transition-colors">
+        <nav className="hidden items-center gap-7 text-sm font-medium text-zinc-200 md:flex">
+          <a href="#fitment" className="transition-colors hover:text-[#ff4d5e]">
             Tra Cứu Xe
           </a>
-          <a href="#catalog" className="hover:text-[#ff4d5e] transition-colors">
+          <a href="#catalog" className="transition-colors hover:text-[#ff4d5e]">
             Kệ Hàng Đêm
           </a>
-          <a href="#simulator" className="flex items-center gap-1.5 hover:text-amber-400 transition-colors">
-            <Sparkles className="h-3.5 w-3.5 text-red-500" />
+          <a href="#simulator" className="flex items-center gap-1.5 transition-colors hover:text-amber-300">
+            <Sparkles className="h-3.5 w-3.5 text-[#ff2e43]" />
             Thử Ánh Sáng
           </a>
-          <a href="#order-lookup" className="hover:text-[#ff4d5e] transition-colors">
+          <a href="#order-lookup" className="transition-colors hover:text-[#ff4d5e]">
             Tra Đơn Hàng
           </a>
         </nav>
@@ -50,25 +50,25 @@ export function Navbar({ cartCount, apiConnected, onOpenCart }: NavbarProps) {
           <div
             title={
               apiConnected
-                ? "Backend API (localhost:4000) đang hoạt động"
-                : "Đang chạy chế độ dữ liệu dự phòng (khởi động backend tại port 4000 để lưu đơn thật)"
+                ? "Hệ thống kho đơn đang trực tuyến"
+                : "Đang chạy chế độ xem trước"
             }
-            className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-mono sm:flex ${
+            className={`chamfer-sm hidden items-center gap-1.5 border px-2.5 py-1 font-mono text-[11px] font-semibold sm:flex ${
               apiConnected
-                ? "border-emerald-800/50 bg-emerald-950/40 text-emerald-300"
-                : "border-amber-800/50 bg-amber-950/40 text-amber-300"
+                ? "border-emerald-700/65 bg-emerald-950/50 text-emerald-300"
+                : "border-amber-700/65 bg-amber-950/50 text-amber-300"
             }`}
           >
             {apiConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-            <span>{apiConnected ? "API LIVE" : "PREVIEW"}</span>
+            <span>{apiConnected ? "ONLINE" : "PREVIEW"}</span>
           </div>
 
           <button
             type="button"
             onClick={onOpenCart}
-            className="relative inline-flex items-center gap-2 border border-red-600/60 bg-gradient-to-b from-red-950/85 to-[#14070b] px-3.5 py-2 text-sm font-semibold text-[#ede6e1] shadow-[0_0_18px_rgba(225,29,46,0.3)] transition hover:border-red-400 hover:shadow-[0_0_24px_rgba(225,29,46,0.55)] cursor-pointer"
+            className="chamfer-sm relative inline-flex cursor-pointer items-center gap-2 border border-red-500/75 bg-gradient-to-b from-red-950/90 to-[#14060a] px-3.5 py-2 text-sm font-semibold text-[#f3ede8] shadow-[0_0_20px_rgba(225,29,46,0.35)] transition hover:border-red-400 hover:shadow-[0_0_28px_rgba(255,46,67,0.6)]"
           >
-            <ShoppingBag className="h-4 w-4 text-red-400" />
+            <ShoppingBag className="h-4 w-4 text-[#ff4d5e]" />
             <span>Giỏ Hàng</span>
             <span className="inline-flex h-5 min-w-5 items-center justify-center bg-[#e11d2e] px-1.5 font-mono text-xs font-bold text-white">
               {cartCount}
@@ -79,4 +79,3 @@ export function Navbar({ cartCount, apiConnected, onOpenCart }: NavbarProps) {
     </header>
   );
 }
-

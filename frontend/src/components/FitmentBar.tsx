@@ -22,32 +22,30 @@ export function FitmentBar({
 
   return (
     <section id="fitment" className="relative z-20 mx-auto -mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div className="yokocho-panel lantern-glow relative p-5 backdrop-blur-xl sm:p-6">
+      <div className="yokocho-panel lantern-glow chamfer-md relative p-5 backdrop-blur-xl sm:p-6">
         {/* Japanese HUD Corner Ticks */}
-        <span className="pointer-events-none absolute top-0 left-0 h-3 w-3 border-t-2 border-l-2 border-red-500" />
-        <span className="pointer-events-none absolute top-0 right-0 h-3 w-3 border-t-2 border-r-2 border-red-500" />
-        <span className="pointer-events-none absolute bottom-0 left-0 h-3 w-3 border-b-2 border-l-2 border-red-500" />
-        <span className="pointer-events-none absolute right-0 bottom-0 h-3 w-3 border-r-2 border-b-2 border-red-500" />
+        <span className="pointer-events-none absolute top-0 left-0 h-3 w-3 border-t-2 border-l-2 border-[#ff2e43]" />
+        <span className="pointer-events-none absolute right-0 bottom-0 h-3 w-3 border-r-2 border-b-2 border-[#ff2e43]" />
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="flex items-center gap-2 font-mono text-xs tracking-widest text-red-400 uppercase">
+            <div className="flex items-center gap-2 font-mono text-xs tracking-widest text-[#ff4d5e] uppercase">
               <Car className="h-4 w-4" />
               <span>車両適合検索 // Tra Cứu Tương Thích Theo Xe</span>
             </div>
-            <h2 className="mt-1 text-lg font-bold text-[#ede6e1]">
+            <h2 className="mt-1 text-lg font-bold text-[#f3ede8]">
               Chọn Hãng Xe hoặc Nhập Mã OEM / Chân Bóng (H4, H11, Bi-Gầm...)
             </h2>
           </div>
 
           <div className="relative w-full lg:w-84">
-            <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-zinc-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Tìm mã SKU, KOITO, H11, Bi-LED..."
-              className="w-full border border-red-900/55 bg-[#090406] py-2.5 pr-9 pl-10 text-sm text-[#ede6e1] placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+              className="w-full border border-red-800/60 bg-[#080305] py-2.5 pr-9 pl-10 text-sm text-[#f3ede8] placeholder:text-zinc-500 focus:border-[#ff2e43] focus:outline-none"
             />
             {searchQuery && (
               <button
@@ -66,10 +64,10 @@ export function FitmentBar({
           <button
             type="button"
             onClick={() => onSelectMake("")}
-            className={`cursor-pointer border px-3.5 py-1.5 font-mono text-xs font-semibold tracking-wide uppercase transition ${
+            className={`chamfer-sm cursor-pointer border px-3.5 py-1.5 font-mono text-xs font-semibold tracking-wide uppercase transition ${
               selectedMake === ""
-                ? "border-red-400 bg-[#e11d2e] text-white shadow-[0_0_16px_rgba(225,29,46,0.5)]"
-                : "border-red-900/45 bg-[#11080c] text-zinc-300 hover:border-red-500/70"
+                ? "border-red-400 bg-[#e11d2e] text-white shadow-[0_0_18px_rgba(225,29,46,0.55)]"
+                : "border-red-900/50 bg-[#11070b] text-zinc-200 hover:border-red-500"
             }`}
           >
             Tất Cả Dòng Xe
@@ -81,10 +79,10 @@ export function FitmentBar({
                 key={fit.make}
                 type="button"
                 onClick={() => onSelectMake(active ? "" : fit.make)}
-                className={`cursor-pointer border px-3.5 py-1.5 font-mono text-xs font-semibold tracking-wide uppercase transition ${
+                className={`chamfer-sm cursor-pointer border px-3.5 py-1.5 font-mono text-xs font-semibold tracking-wide uppercase transition ${
                   active
-                    ? "border-red-400 bg-[#e11d2e] text-white shadow-[0_0_16px_rgba(225,29,46,0.5)]"
-                    : "border-red-900/45 bg-[#11080c] text-zinc-300 hover:border-red-500/70"
+                    ? "border-red-400 bg-[#e11d2e] text-white shadow-[0_0_18px_rgba(225,29,46,0.55)]"
+                    : "border-red-900/50 bg-[#11070b] text-zinc-200 hover:border-red-500"
                 }`}
               >
                 {fit.make}
@@ -94,19 +92,19 @@ export function FitmentBar({
         </div>
 
         {activeVehicle && (
-          <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 border-l-2 border-amber-500 bg-amber-950/20 px-4 py-2.5 text-xs">
+          <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 border-l-2 border-amber-400 bg-amber-950/25 px-4 py-2.5 text-xs">
             <span className="font-semibold text-amber-300">
               Dòng xe hỗ trợ ({activeVehicle.make}): {activeVehicle.model}
             </span>
-            <span className="font-mono text-zinc-400">
+            <span className="font-mono text-zinc-300">
               Đời xe: {activeVehicle.years[0]} – {activeVehicle.years[activeVehicle.years.length - 1]}
             </span>
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-zinc-400">Chân chuẩn:</span>
+              <span className="text-zinc-300">Chân chuẩn:</span>
               {activeVehicle.recommendedSockets.map((sock) => (
                 <span
                   key={sock}
-                  className="border border-red-800/55 bg-[#17090e] px-2 py-0.5 font-mono text-[11px] text-red-200"
+                  className="border border-red-700/60 bg-[#17090e] px-2 py-0.5 font-mono text-[11px] text-red-200"
                 >
                   {sock}
                 </span>

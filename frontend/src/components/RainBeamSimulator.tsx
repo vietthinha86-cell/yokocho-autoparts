@@ -3,8 +3,9 @@
 import Image from "next/image";
 import { CloudRain, Eye, Flame, Moon, Sun, Zap } from "lucide-react";
 import { useState } from "react";
+import { MidnightRainCanvas, type RainBeamColorMode } from "./MidnightRainCanvas";
 
-type BeamMode = "off" | "3000k" | "4300k" | "6000k" | "combo";
+type BeamMode = RainBeamColorMode;
 
 interface BeamProfile {
   id: BeamMode;
@@ -18,6 +19,7 @@ interface BeamProfile {
   rightBeamGradient: string;
   fogCarpetGradient: string;
   cutLineColor: string;
+  chromaRimColor: string;
   ambientClass: string;
 }
 
@@ -34,7 +36,8 @@ const BEAM_PROFILES: BeamProfile[] = [
     rightBeamGradient: "opacity-0",
     fogCarpetGradient: "opacity-0",
     cutLineColor: "transparent",
-    ambientClass: "brightness-[0.38] contrast-125",
+    chromaRimColor: "transparent",
+    ambientClass: "brightness-[0.34] contrast-125",
   },
   {
     id: "3000k",
@@ -48,9 +51,10 @@ const BEAM_PROFILES: BeamProfile[] = [
     leftBeamGradient: "opacity-0",
     rightBeamGradient: "opacity-0",
     fogCarpetGradient:
-      "opacity-95 bg-[radial-gradient(ellipse_at_50%_95%,rgba(245,158,11,0.8)_0%,rgba(234,88,12,0.42)_42%,transparent_76%)]",
-    cutLineColor: "rgba(251, 191, 36, 0.85)",
-    ambientClass: "brightness-[0.88] sepia-[0.22]",
+      "opacity-95 bg-[radial-gradient(ellipse_at_50%_94%,rgba(245,158,11,0.88)_0%,rgba(234,88,12,0.48)_42%,transparent_76%)]",
+    cutLineColor: "rgba(251, 191, 36, 0.9)",
+    chromaRimColor: "rgba(249, 115, 22, 0.65)",
+    ambientClass: "brightness-[0.88] sepia-[0.22] contrast-110",
   },
   {
     id: "4300k",
@@ -62,12 +66,14 @@ const BEAM_PROFILES: BeamProfile[] = [
     rainPct: 91,
     distanceMeters: 165,
     leftBeamGradient:
-      "opacity-90 bg-[radial-gradient(ellipse_at_bottom,rgba(254,240,138,0.85)_0%,rgba(245,158,11,0.28)_55%,transparent_80%)]",
+      "opacity-92 bg-[radial-gradient(ellipse_at_bottom,rgba(254,240,138,0.88)_0%,rgba(245,158,11,0.32)_55%,transparent_80%)]",
     rightBeamGradient:
-      "opacity-90 bg-[radial-gradient(ellipse_at_bottom,rgba(254,240,138,0.85)_0%,rgba(245,158,11,0.28)_55%,transparent_80%)]",
-    fogCarpetGradient: "opacity-35 bg-[radial-gradient(ellipse_at_50%_95%,rgba(251,191,36,0.35)_0%,transparent_68%)]",
-    cutLineColor: "rgba(253, 224, 71, 0.85)",
-    ambientClass: "brightness-100",
+      "opacity-92 bg-[radial-gradient(ellipse_at_bottom,rgba(254,240,138,0.88)_0%,rgba(245,158,11,0.32)_55%,transparent_80%)]",
+    fogCarpetGradient:
+      "opacity-40 bg-[radial-gradient(ellipse_at_50%_95%,rgba(251,191,36,0.4)_0%,transparent_68%)]",
+    cutLineColor: "rgba(253, 224, 71, 0.9)",
+    chromaRimColor: "rgba(96, 165, 250, 0.6)",
+    ambientClass: "brightness-100 contrast-110",
   },
   {
     id: "6000k",
@@ -79,12 +85,14 @@ const BEAM_PROFILES: BeamProfile[] = [
     rainPct: 82,
     distanceMeters: 240,
     leftBeamGradient:
-      "opacity-95 bg-[radial-gradient(ellipse_at_bottom,rgba(224,242,254,0.92)_0%,rgba(125,211,252,0.3)_55%,transparent_82%)]",
+      "opacity-95 bg-[radial-gradient(ellipse_at_bottom,rgba(224,242,254,0.95)_0%,rgba(125,211,252,0.34)_54%,transparent_82%)]",
     rightBeamGradient:
-      "opacity-95 bg-[radial-gradient(ellipse_at_bottom,rgba(224,242,254,0.92)_0%,rgba(125,211,252,0.3)_55%,transparent_82%)]",
-    fogCarpetGradient: "opacity-25 bg-[radial-gradient(ellipse_at_50%_95%,rgba(186,230,253,0.3)_0%,transparent_65%)]",
-    cutLineColor: "rgba(125, 211, 252, 0.95)",
-    ambientClass: "brightness-110 contrast-110",
+      "opacity-95 bg-[radial-gradient(ellipse_at_bottom,rgba(224,242,254,0.95)_0%,rgba(125,211,252,0.34)_54%,transparent_82%)]",
+    fogCarpetGradient:
+      "opacity-28 bg-[radial-gradient(ellipse_at_50%_95%,rgba(186,230,253,0.36)_0%,transparent_65%)]",
+    cutLineColor: "rgba(125, 211, 252, 0.98)",
+    chromaRimColor: "rgba(129, 140, 248, 0.85)",
+    ambientClass: "brightness-110 contrast-115",
   },
   {
     id: "combo",
@@ -96,13 +104,14 @@ const BEAM_PROFILES: BeamProfile[] = [
     rainPct: 99,
     distanceMeters: 280,
     leftBeamGradient:
-      "opacity-95 bg-[radial-gradient(ellipse_at_bottom,rgba(248,250,252,0.88)_0%,rgba(147,197,253,0.28)_55%,transparent_80%)]",
+      "opacity-95 bg-[radial-gradient(ellipse_at_bottom,rgba(248,250,252,0.92)_0%,rgba(147,197,253,0.32)_55%,transparent_80%)]",
     rightBeamGradient:
-      "opacity-95 bg-[radial-gradient(ellipse_at_bottom,rgba(248,250,252,0.88)_0%,rgba(147,197,253,0.28)_55%,transparent_80%)]",
+      "opacity-95 bg-[radial-gradient(ellipse_at_bottom,rgba(248,250,252,0.92)_0%,rgba(147,197,253,0.32)_55%,transparent_80%)]",
     fogCarpetGradient:
-      "opacity-95 bg-[radial-gradient(ellipse_at_50%_95%,rgba(245,158,11,0.82)_0%,rgba(234,88,12,0.38)_44%,transparent_76%)]",
-    cutLineColor: "rgba(224, 242, 254, 0.9)",
-    ambientClass: "brightness-115 contrast-110",
+      "opacity-95 bg-[radial-gradient(ellipse_at_50%_95%,rgba(245,158,11,0.88)_0%,rgba(234,88,12,0.42)_44%,transparent_76%)]",
+    cutLineColor: "rgba(224, 242, 254, 0.95)",
+    chromaRimColor: "rgba(99, 102, 241, 0.82)",
+    ambientClass: "brightness-115 contrast-115",
   },
 ];
 
@@ -112,96 +121,141 @@ export function RainBeamSimulator() {
   const active = BEAM_PROFILES.find((p) => p.id === mode) ?? BEAM_PROFILES[4];
 
   const canHighBeam = mode !== "off";
+  const highBeamActive = highBeam && canHighBeam;
+  const effectiveDistance = highBeamActive ? active.distanceMeters + 140 : active.distanceMeters;
 
   return (
     <section
       id="simulator"
-      className="border-y border-red-900/35 bg-[#040203] py-16"
+      className="border-y border-red-800/45 bg-[#040203] py-16"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
-            <p className="font-mono text-xs tracking-[0.22em] text-red-400 uppercase">
-              夜間雨天テスト // Phòng Thử 2 Luồng Ánh Sáng
+            <p className="font-mono text-xs tracking-[0.22em] text-[#ff4d5e] uppercase">
+              夜間雨天テスト // Phòng Thử 2 Luồng Ánh Sáng Live
             </p>
-            <h2 className="mt-1.5 font-[family-name:var(--font-serif-jp)] text-2xl font-bold text-[#ede6e1] sm:text-3xl">
+            <h2 className="mt-1.5 font-[family-name:var(--font-serif-jp)] text-2xl font-bold text-[#f3ede8] sm:text-3xl">
               Trải Nghiệm Rọi Đèn Xuyên Con Hẻm Mưa Đêm
             </h2>
           </div>
-          <p className="max-w-md text-sm text-zinc-400">
+          <p className="max-w-md text-sm text-zinc-300">
             Bật từng chế độ nhiệt màu hoặc giữ nút{" "}
-            <span className="font-semibold text-sky-300">Đá Pha Laser (+80W)</span> để kiểm chứng
-            đường cắt sáng thực tế.
+            <span className="font-bold text-sky-300">Đá Pha Laser (+80W)</span> để thấy hạt mưa
+            bắt sáng và đường cắt Z-Step thực tế.
           </p>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-12">
-          {/* Interactive Dark Alley Projection Viewport */}
-          <div className="yokocho-panel relative overflow-hidden lg:col-span-8">
-            <div className="relative h-80 w-full sm:h-[430px]">
-              <Image
-                src="/images/alley-beam-stage.jpg"
-                alt="Con hẻm đêm mưa Nhật Bản thử nghiệm tia sáng Bi-LED"
-                fill
-                sizes="(max-width: 1024px) 100vw, 66vw"
-                className={`object-cover transition-all duration-500 ${active.ambientClass} ${
-                  highBeam && canHighBeam ? "brightness-125" : ""
-                }`}
-              />
-
-              <div className="midnight-rain pointer-events-none absolute inset-0 opacity-75" />
-
-              {/* Left & Right Headlight Beams */}
-              <div
-                className={`pointer-events-none absolute bottom-0 left-[8%] h-[78%] w-[46%] transition-all duration-500 mix-blend-screen ${active.leftBeamGradient}`}
-                style={{
-                  clipPath: "polygon(32% 100%, 62% 100%, 96% 32%, 2% 38%)",
-                }}
-              />
-              <div
-                className={`pointer-events-none absolute right-[8%] bottom-0 h-[78%] w-[46%] transition-all duration-500 mix-blend-screen ${active.rightBeamGradient}`}
-                style={{
-                  clipPath: "polygon(38% 100%, 68% 100%, 98% 38%, 4% 32%)",
-                }}
-              />
-
-              {/* Low-Mounted Bi-Fog Amber / Reflection Carpet */}
-              <div
-                className={`pointer-events-none absolute inset-x-0 bottom-0 h-[55%] transition-all duration-500 mix-blend-screen ${active.fogCarpetGradient}`}
-                style={{
-                  clipPath: "polygon(18% 100%, 82% 100%, 100% 35%, 0% 35%)",
-                }}
-              />
-
-              {/* Piercing Center High-Beam Laser Flash */}
-              {highBeam && canHighBeam && (
-                <div
-                  className="pointer-events-none absolute inset-x-[18%] bottom-0 h-[92%] bg-[radial-gradient(ellipse_at_50%_65%,rgba(224,242,254,0.95)_0%,rgba(56,189,248,0.42)_42%,transparent_75%)] mix-blend-screen transition-opacity duration-150"
-                  style={{
-                    clipPath: "polygon(36% 100%, 64% 100%, 86% 10%, 14% 10%)",
-                  }}
+          {/* Interactive Live Dark Alley Projection Viewport */}
+          <div className="yokocho-panel chamfer-md relative overflow-hidden lg:col-span-8">
+            <div className="relative h-80 w-full sm:h-[440px]">
+              {/* Subtle breathing camera cinemagraph */}
+              <div className="animate-hero-cinema relative h-full w-full">
+                <Image
+                  src="/images/alley-beam-stage.jpg"
+                  alt="Con hẻm đêm mưa Nhật Bản thử nghiệm tia sáng Bi-LED"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 66vw"
+                  className={`photo-razor object-cover transition-all duration-500 ${active.ambientClass} ${
+                    highBeamActive ? "brightness-125 contrast-120" : ""
+                  }`}
                 />
+              </div>
+
+              {/* Dual Headlight Optical Projections + Live Shimmer */}
+              <div
+                className={`animate-road-shimmer pointer-events-none absolute bottom-0 left-[7%] h-[78%] w-[46%] mix-blend-screen transition-all duration-500 ${active.leftBeamGradient}`}
+                style={{
+                  clipPath: "polygon(32% 100%, 62% 100%, 96% 31%, 2% 38%)",
+                }}
+              />
+              <div
+                className={`animate-road-shimmer pointer-events-none absolute right-[7%] bottom-0 h-[78%] w-[46%] mix-blend-screen transition-all duration-500 ${active.rightBeamGradient}`}
+                style={{
+                  clipPath: "polygon(38% 100%, 68% 100%, 98% 38%, 4% 31%)",
+                  animationDelay: "0.4s",
+                }}
+              />
+
+              {/* Low-Mounted Bi-Fog Amber & Asphalt Wet Reflection */}
+              <div
+                className={`animate-road-shimmer pointer-events-none absolute inset-x-0 bottom-0 h-[56%] mix-blend-screen transition-all duration-500 ${active.fogCarpetGradient}`}
+                style={{
+                  clipPath: "polygon(16% 100%, 84% 100%, 100% 34%, 0% 34%)",
+                }}
+              />
+
+              {/* Piercing Center High-Beam Laser Ignition */}
+              {highBeamActive && (
+                <>
+                  <div
+                    className="animate-optic-pulse pointer-events-none absolute inset-x-[16%] bottom-0 h-[94%] bg-[radial-gradient(ellipse_at_50%_62%,rgba(224,242,254,0.96)_0%,rgba(56,189,248,0.46)_42%,transparent_76%)] mix-blend-screen transition-opacity duration-150"
+                    style={{
+                      clipPath: "polygon(36% 100%, 64% 100%, 84% 8%, 16% 8%)",
+                    }}
+                  />
+                  <div
+                    className="pointer-events-none absolute inset-x-[28%] bottom-0 h-[88%] bg-[radial-gradient(ellipse_at_50%_52%,rgba(255,255,255,0.9)_0%,rgba(125,211,252,0.35)_38%,transparent_72%)] mix-blend-screen"
+                    style={{
+                      clipPath: "polygon(43% 100%, 57% 100%, 72% 12%, 28% 12%)",
+                    }}
+                  />
+                </>
               )}
 
-              {/* Japanese Z-Step Cut-off Horizon Line */}
+              {/* Razor-Sharp Japanese Z-Step Cut-off Horizon Edge + Chromatic Blue Dispersion */}
               {mode !== "off" && (
-                <div
-                  className="pointer-events-none absolute right-[10%] left-[10%] top-[48%] h-[2px] transition-all duration-500"
-                  style={{
-                    background: `linear-gradient(90deg, transparent, ${active.cutLineColor}, transparent)`,
-                    boxShadow: `0 0 18px ${active.cutLineColor}`,
-                  }}
-                />
+                <div className="pointer-events-none absolute right-[8%] left-[8%] top-[47%] h-3">
+                  <svg
+                    viewBox="0 0 800 24"
+                    preserveAspectRatio="none"
+                    className="h-full w-full overflow-visible"
+                  >
+                    {/* Chromatic signature violet/blue rim */}
+                    <polyline
+                      points="0,14 350,14 405,6 800,6"
+                      fill="none"
+                      stroke={active.chromaRimColor}
+                      strokeWidth="3.5"
+                      opacity="0.7"
+                    />
+                    {/* Crisp razor cutoff core */}
+                    <polyline
+                      points="0,16 350,16 405,8 800,8"
+                      fill="none"
+                      stroke={active.cutLineColor}
+                      strokeWidth="1.8"
+                    />
+                  </svg>
+                </div>
               )}
+
+              {/* Real-Time Interactive 60fps Canvas Rain Lit Inside Headlight Cone */}
+              <div className="pointer-events-none absolute inset-0 z-10">
+                <MidnightRainCanvas
+                  intensity="simulator"
+                  beamMode={mode}
+                  highBeam={highBeamActive}
+                />
+              </div>
+
+              {/* Optical Viewfinder Crosshairs */}
+              <div className="pointer-events-none absolute inset-3 z-20">
+                <span className="absolute top-0 left-0 h-3 w-3 border-t-2 border-l-2 border-red-500/80" />
+                <span className="absolute top-0 right-0 h-3 w-3 border-t-2 border-r-2 border-red-500/80" />
+                <span className="absolute bottom-0 left-0 h-3 w-3 border-b-2 border-l-2 border-amber-500/80" />
+                <span className="absolute right-0 bottom-0 h-3 w-3 border-r-2 border-b-2 border-amber-500/80" />
+              </div>
 
               {/* Top HUD */}
-              <div className="absolute top-4 right-4 left-4 flex flex-wrap items-center justify-between gap-2">
+              <div className="absolute top-5 right-5 left-5 z-30 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="border border-red-800/65 bg-black/80 px-3 py-1 font-mono text-xs text-red-300 backdrop-blur-md">
+                  <span className="chamfer-sm border border-red-600/75 bg-black/85 px-3 py-1 font-mono text-xs font-semibold text-red-200 backdrop-blur-md">
                     {active.kelvinText}
                   </span>
-                  {highBeam && canHighBeam && (
-                    <span className="border border-sky-400/70 bg-sky-950/85 px-2.5 py-1 font-mono text-xs font-bold text-sky-200 shadow-[0_0_16px_rgba(56,189,248,0.6)]">
+                  {highBeamActive && (
+                    <span className="chamfer-sm animate-pulse border border-sky-400 bg-sky-950/90 px-2.5 py-1 font-mono text-xs font-bold text-sky-200 shadow-[0_0_20px_rgba(56,189,248,0.75)]">
                       LASER PHA +80W ON
                     </span>
                   )}
@@ -211,42 +265,53 @@ export function RainBeamSimulator() {
                   type="button"
                   disabled={!canHighBeam}
                   onClick={() => setHighBeam((prev) => !prev)}
-                  className={`inline-flex cursor-pointer items-center gap-1.5 border px-3 py-1.5 font-mono text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                    highBeam && canHighBeam
-                      ? "border-sky-300 bg-sky-500 text-slate-950 shadow-[0_0_24px_rgba(56,189,248,0.8)]"
-                      : "border-red-700/60 bg-black/80 text-sky-300 hover:border-sky-400"
+                  className={`chamfer-sm inline-flex cursor-pointer items-center gap-1.5 border px-3.5 py-1.5 font-mono text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                    highBeamActive
+                      ? "border-sky-300 bg-sky-400 text-slate-950 shadow-[0_0_28px_rgba(56,189,248,0.85)]"
+                      : "border-red-600/70 bg-black/85 text-sky-300 hover:border-sky-400"
                   }`}
                 >
                   <Zap className="h-3.5 w-3.5" />
-                  <span>{highBeam && canHighBeam ? "Tắt Đá Pha" : "Đá Pha Laser (+80W)"}</span>
+                  <span>{highBeamActive ? "Tắt Đá Pha" : "Đá Pha Laser (+80W)"}</span>
                 </button>
               </div>
 
               {/* Bottom Optical Telemetry Readout */}
-              <div className="absolute right-4 bottom-4 left-4 border border-red-900/45 bg-black/80 p-3.5 backdrop-blur-md">
+              <div className="absolute right-5 bottom-5 left-5 z-30 border border-red-700/55 bg-black/85 p-3.5 backdrop-blur-md">
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                   <div>
                     <p className="font-[family-name:var(--font-serif-jp)] text-sm font-bold text-white">
                       {active.label}{" "}
-                      <span className="ml-2 text-xs text-red-400">{active.jpLabel}</span>
+                      <span className="ml-2 font-bold text-[#ff4d5e]">{active.jpLabel}</span>
                     </p>
                     <p className="mt-0.5 text-xs text-zinc-300">{active.description}</p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-4 font-mono text-xs">
-                    <div>
-                      <span className="block text-[10px] text-zinc-500">XUYÊN MƯA</span>
-                      <span className="font-bold text-amber-300">{active.rainPct}%</span>
+                  <div className="flex shrink-0 items-center gap-5 font-mono text-xs">
+                    <div className="w-20">
+                      <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                        <span>XUYÊN MƯA</span>
+                        <span className="font-bold text-amber-300">{active.rainPct}%</span>
+                      </div>
+                      <div className="mt-1 h-1 w-full bg-zinc-800">
+                        <div
+                          className="h-full bg-gradient-to-r from-amber-500 to-yellow-300 transition-all duration-300"
+                          style={{ width: `${active.rainPct}%` }}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <span className="block text-[10px] text-zinc-500">CHIẾU XA</span>
-                      <span className="font-bold text-sky-300">
-                        {highBeam && canHighBeam
-                          ? active.distanceMeters + 140
-                          : active.distanceMeters}
-                        m
-                      </span>
+                    <div className="w-24">
+                      <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                        <span>CHIẾU XA</span>
+                        <span className="font-bold text-sky-300">{effectiveDistance}m</span>
+                      </div>
+                      <div className="mt-1 h-1 w-full bg-zinc-800">
+                        <div
+                          className="h-full bg-gradient-to-r from-sky-500 to-cyan-300 transition-all duration-300"
+                          style={{ width: `${Math.min(100, Math.round((effectiveDistance / 420) * 100))}%` }}
+                        />
+                      </div>
                     </div>
-                    <Eye className="hidden h-5 w-5 text-red-400 sm:block" />
+                    <Eye className="hidden h-5 w-5 text-[#ff4d5e] sm:block" />
                   </div>
                 </div>
               </div>
@@ -254,9 +319,9 @@ export function RainBeamSimulator() {
           </div>
 
           {/* Right Illuminated JDM Switch Stack */}
-          <div className="yokocho-panel flex flex-col justify-between gap-3 p-5 lg:col-span-4">
+          <div className="yokocho-panel chamfer-md flex flex-col justify-between gap-3 p-5 lg:col-span-4">
             <div className="space-y-2">
-              <p className="font-mono text-xs tracking-widest text-zinc-400 uppercase">
+              <p className="font-mono text-xs font-semibold tracking-widest text-zinc-300 uppercase">
                 Công Tắc Nhiệt Màu Đêm Mưa
               </p>
               {BEAM_PROFILES.map((profile) => {
@@ -269,10 +334,10 @@ export function RainBeamSimulator() {
                       setMode(profile.id);
                       if (profile.id === "off") setHighBeam(false);
                     }}
-                    className={`flex w-full cursor-pointer items-center justify-between border p-3 text-left transition ${
+                    className={`chamfer-sm flex w-full cursor-pointer items-center justify-between border p-3 text-left transition ${
                       selected
-                        ? "border-red-500 bg-gradient-to-r from-red-950/90 to-[#180a0f] shadow-[0_0_20px_rgba(225,29,46,0.35)]"
-                        : "border-red-900/30 bg-[#0d0609] hover:border-red-600/60"
+                        ? "border-[#ff2e43] bg-gradient-to-r from-red-950/95 to-[#1a090e] shadow-[0_0_24px_rgba(225,29,46,0.42)]"
+                        : "border-red-900/40 bg-[#0d0508] hover:border-red-500/75"
                     }`}
                   >
                     <div>
@@ -282,11 +347,11 @@ export function RainBeamSimulator() {
                         ) : profile.id === "3000k" ? (
                           <CloudRain className="h-4 w-4 text-amber-400" />
                         ) : profile.id === "combo" ? (
-                          <Flame className="h-4 w-4 text-red-400" />
+                          <Flame className="h-4 w-4 text-[#ff4d5e]" />
                         ) : (
                           <Sun className="h-4 w-4 text-sky-300" />
                         )}
-                        <span className="text-xs font-bold text-[#ede6e1] sm:text-sm">
+                        <span className="text-xs font-bold text-[#f3ede8] sm:text-sm">
                           {profile.label}
                         </span>
                       </div>
@@ -294,7 +359,7 @@ export function RainBeamSimulator() {
                         {profile.kelvinText}
                       </p>
                     </div>
-                    <span className="font-[family-name:var(--font-serif-jp)] text-xs text-red-400">
+                    <span className="font-[family-name:var(--font-serif-jp)] text-xs font-bold text-[#ff4d5e]">
                       {profile.jpLabel}
                     </span>
                   </button>
@@ -302,10 +367,10 @@ export function RainBeamSimulator() {
               })}
             </div>
 
-            <div className="border-l-2 border-red-600 bg-[#12080c] p-3 text-xs text-zinc-400">
-              <span className="font-semibold text-red-300">Khuyên dùng đi đêm Việt Nam:</span>{" "}
-              Cấu hình <span className="text-amber-300">Combo Bi-LED + Bi-Gầm 3000K</span> giúp đi
-              mưa bão hay sương mù đèo đều thấy rõ vạch đường.
+            <div className="border-l-2 border-[#ff2e43] bg-[#13070b] p-3 text-xs text-zinc-300">
+              <span className="font-bold text-red-300">Khuyên dùng đi đêm Việt Nam:</span> Cấu
+              hình <span className="font-semibold text-amber-300">Combo Bi-LED + Bi-Gầm 3000K</span>{" "}
+              giúp đi mưa bão hay sương mù đèo đều thấy rõ vạch đường.
             </div>
           </div>
         </div>
