@@ -1,6 +1,6 @@
 "use client";
 
-import { GitBranch, PackageSearch, Server, Workflow } from "lucide-react";
+import { PackageSearch, ShieldCheck, Wrench } from "lucide-react";
 import { useState } from "react";
 import { formatVnd, lookupOrder } from "@/lib/api";
 import type { OrderRecord } from "@/types/autoparts";
@@ -39,14 +39,14 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
           <span className="pointer-events-none absolute right-0 bottom-0 h-2.5 w-2.5 border-r border-b border-red-500/80" />
           <div className="flex items-center gap-2 font-mono text-xs tracking-widest text-red-400 uppercase">
             <PackageSearch className="h-4 w-4" />
-            <span>注文追跡 // Tra Cứu Đơn Hàng Real-time</span>
+            <span>注文追跡 // Tra Cứu Đơn Hàng Nhanh</span>
           </div>
           <h2 className="mt-1.5 font-[family-name:var(--font-serif-jp)] text-xl font-bold text-white">
             Kiểm Tra Trạng Thái Đơn Phụ Tùng
           </h2>
           <p className="mt-1.5 text-xs text-zinc-400">
-            Nhập mã đơn <span className="font-mono text-amber-300">YKC-...</span> sau khi đặt hàng để
-            kiểm tra dữ liệu trực tiếp từ Backend API.
+            Nhập mã đơn <span className="font-mono text-amber-300">YKC-...</span> sau khi đặt hàng
+            để theo dõi tiến độ đóng gói, kiểm giắc và giao nhận.
           </p>
 
           <form onSubmit={handleSearch} className="mt-4 flex gap-2">
@@ -55,28 +55,28 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="Ví dụ: YKC-8492-A1B2"
-              className="flex-1 rounded-lg border border-red-900/50 bg-[#150b10] px-3.5 py-2.5 font-mono text-xs text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+              className="flex-1 border border-red-900/55 bg-[#090406] px-3.5 py-2.5 font-mono text-xs text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
             />
             <button
               type="submit"
               disabled={loading}
-              className="rounded-lg bg-[#e11d2e] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#ff2e43] disabled:opacity-50 cursor-pointer"
+              className="cursor-pointer bg-[#e11d2e] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#ff2e43] disabled:opacity-50"
             >
               {loading ? "Đang tìm..." : "Tra Cứu"}
             </button>
           </form>
 
           {error && (
-            <p className="mt-3 rounded-lg border border-red-800/60 bg-red-950/50 px-3 py-2 text-xs text-red-200">
+            <p className="mt-3 border border-red-800/60 bg-red-950/50 px-3 py-2 text-xs text-red-200">
               {error}
             </p>
           )}
 
           {order && (
-            <div className="mt-4 rounded-xl border border-emerald-800/50 bg-[#08110c] p-4 text-xs">
+            <div className="mt-4 border border-emerald-800/50 bg-[#08110c] p-4 text-xs">
               <div className="flex items-center justify-between">
                 <span className="font-mono font-bold text-amber-300">{order.orderCode}</span>
-                <span className="rounded bg-emerald-950 px-2 py-0.5 font-mono text-[11px] text-emerald-300">
+                <span className="border border-emerald-700/50 bg-emerald-950 px-2 py-0.5 font-mono text-[11px] text-emerald-300">
                   {order.status}
                 </span>
               </div>
@@ -90,34 +90,34 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
           )}
         </div>
 
-        {/* Project Roadmap Summary Card */}
+        {/* Customer Night Garage Support & Warranty Card */}
         <div className="yokocho-panel relative p-6 lg:col-span-6">
           <span className="pointer-events-none absolute top-0 left-0 h-2.5 w-2.5 border-t border-l border-amber-500/80" />
           <span className="pointer-events-none absolute right-0 bottom-0 h-2.5 w-2.5 border-r border-b border-amber-500/80" />
           <div className="flex items-center gap-2 font-mono text-xs tracking-widest text-amber-400 uppercase">
-            <GitBranch className="h-4 w-4" />
-            <span>GitHub Roadmap &amp; Daily CI/CD</span>
+            <ShieldCheck className="h-4 w-4" />
+            <span>夜間保証・取付案内 // Hậu Mãi Xưởng Đêm</span>
           </div>
           <h2 className="mt-1.5 font-[family-name:var(--font-serif-jp)] text-xl font-bold text-white">
-            Kiến Trúc Dự Án &amp; Lộ Trình Phát Triển
+            Cam Kết Lắp Đặt &amp; Bảo Hành Độc Quyền
           </h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-red-900/30 bg-[#140a0e] p-3.5">
+            <div className="border border-red-900/35 bg-[#0c0609] p-3.5">
               <div className="flex items-center gap-2 text-xs font-bold text-red-300">
-                <Server className="h-4 w-4" />
-                <span>Backend + Database</span>
+                <Wrench className="h-4 w-4" />
+                <span>Kiểm Giắc Theo Đời Xe</span>
               </div>
-              <p className="mt-1 text-xs text-zinc-400">
-                Phase 1: Express REST API + Test. Phase 2: PostgreSQL + Prisma + Admin Auth.
+              <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
+                Xác nhận đúng chân H4/H7/H11/Bi-Gầm trước khi giao. Hỗ trợ lắp đêm hoặc ship COD kiểm hàng.
               </p>
             </div>
-            <div className="rounded-xl border border-red-900/30 bg-[#140a0e] p-3.5">
+            <div className="border border-red-900/35 bg-[#0c0609] p-3.5">
               <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
-                <Workflow className="h-4 w-4" />
-                <span>Deploy &amp; Daily Git Push</span>
+                <ShieldCheck className="h-4 w-4" />
+                <span>Bảo Hành 1 Đổi 1 (36 Tháng)</span>
               </div>
-              <p className="mt-1 text-xs text-zinc-400">
-                GitHub Actions tự test &amp; build mỗi lần push. Vercel (FE) + Render/VPS (BE).
+              <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
+                Đổi mới ngay nếu lỗi chip LED, quạt tản nhiệt hoặc hấp hơi nước. Freeship từ 3.000.000₫.
               </p>
             </div>
           </div>
@@ -126,4 +126,3 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
     </section>
   );
 }
-
