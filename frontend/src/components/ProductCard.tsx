@@ -174,11 +174,10 @@ export function ProductCard({
                 onClick={() => onToggleCompare(product)}
                 title="So sánh thông số sản phẩm"
                 aria-label={`So sánh ${product.nameVi}`}
-                className={`chamfer-sm inline-flex cursor-pointer items-center gap-1 border px-2.5 py-2 text-xs font-semibold transition ${
-                  isCompared
+                className={`chamfer-sm inline-flex cursor-pointer items-center gap-1 border px-2.5 py-2 text-xs font-semibold transition ${isCompared
                     ? "border-amber-400 bg-amber-500/20 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.3)]"
                     : "border-zinc-700 bg-[#12070b] text-zinc-300 hover:border-amber-400/70 hover:text-amber-200"
-                }`}
+                  }`}
               >
                 <GitCompareArrows className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{isCompared ? "Đã Chọn" : "So Sánh"}</span>

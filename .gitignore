@@ -10,7 +10,7 @@ frontend/next-env.d.ts
 *.tsbuildinfo
 
 # Runtime / DB
-backend/data/orders.runtime.json
+backend/data/
 *.log
 npm-debug.log*
 

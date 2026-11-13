@@ -21,6 +21,7 @@ jobs:
           cache: "npm"
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      - run: npm run db:generate
       - run: npm run typecheck
       - run: npm test
 

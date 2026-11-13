@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ChochinLantern } from "./ChochinLantern";
 
 export function Footer() {
@@ -17,18 +18,24 @@ export function Footer() {
         </div>
 
         <div className="flex flex-wrap gap-6 text-xs text-zinc-400">
-          <a href="#fitment" className="hover:text-red-400">
+          <Link href="/#fitment" className="hover:text-red-400">
             Tra cứu theo xe
-          </a>
-          <a href="#catalog" className="hover:text-red-400">
+          </Link>
+          <Link href="/#catalog" className="hover:text-red-400">
             Kệ hàng đêm
-          </a>
-          <a href="#simulator" className="hover:text-red-400">
+          </Link>
+          <Link href="/#simulator" className="hover:text-red-400">
             Thử ánh sáng
-          </a>
-          <a href="#order-lookup" className="hover:text-red-400">
+          </Link>
+          <Link href="/#builds" className="hover:text-red-400">
+            Xe lên đèn
+          </Link>
+          <Link href="/#order-lookup" className="hover:text-red-400">
             Tra cứu đơn
-          </a>
+          </Link>
+          <Link href="/admin" className="font-semibold text-amber-300 hover:text-white">
+            Quản trị (/admin)
+          </Link>
         </div>
       </div>
     </footer>

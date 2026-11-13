@@ -20,6 +20,19 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   return {
     title: `${product.nameVi} (${product.sku}) | AKARI YOKOCHO`,
     description: product.summaryVi,
+    openGraph: {
+      title: `${product.nameVi} | AKARI YOKOCHO`,
+      description: product.summaryVi,
+      type: "website",
+      images: [
+        {
+          url: product.image,
+          width: 1024,
+          height: 1024,
+          alt: product.nameVi,
+        },
+      ],
+    },
   };
 }
 

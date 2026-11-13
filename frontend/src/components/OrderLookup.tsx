@@ -144,9 +144,16 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
                       {new Date(order.createdAt).toLocaleString("vi-VN")}
                     </p>
                   </div>
-                  <span className={`border px-2.5 py-0.5 font-mono text-[10px] font-bold ${badge.cls}`}>
-                    {badge.label}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {order.paymentStatus === "paid" && (
+                      <span className="border border-emerald-500/70 bg-emerald-950/80 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-300">
+                        ĐÃ THANH TOÁN QR
+                      </span>
+                    )}
+                    <span className={`border px-2.5 py-0.5 font-mono text-[10px] font-bold ${badge.cls}`}>
+                      {badge.label}
+                    </span>
+                  </div>
                 </div>
 
                 {/* 4-step fulfillment timeline */}

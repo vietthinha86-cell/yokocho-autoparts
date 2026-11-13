@@ -72,6 +72,7 @@ export function StorefrontClient({
   const [selectedMake, setSelectedMake] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedKelvin, setSelectedKelvin] = useState("all");
+  const [priceRange, setPriceRange] = useState<"all" | "under_2m" | "2m_5m" | "over_5m">("all");
   const [stockFilter, setStockFilter] = useState<"all" | "in_stock" | "jdm_preorder">("all");
   const [sortBy, setSortBy] = useState<"default" | "price_asc" | "price_desc">("default");
   const [compareIds, setCompareIds] = useState<string[]>([]);
@@ -95,6 +96,15 @@ export function StorefrontClient({
         if (!joinedKelvin.includes(selectedKelvin.toLowerCase())) {
           return false;
         }
+      }
+      if (priceRange === "under_2m" && part.priceVnd >= 2_000_000) {
+        return false;
+      }
+      if (priceRange === "2m_5m" && (part.priceVnd < 2_000_000 || part.priceVnd > 5_000_000)) {
+        return false;
+      }
+      if (priceRange === "over_5m" && part.priceVnd <= 5_000_000) {
+        return false;
       }
       if (stockFilter === "in_stock" && part.stockStatus !== "in_stock") {
         return false;
@@ -131,6 +141,7 @@ export function StorefrontClient({
     selectedMake,
     searchQuery,
     selectedKelvin,
+    priceRange,
     stockFilter,
     sortBy,
   ]);
@@ -268,6 +279,20 @@ export function StorefrontClient({
               </select>
 
               <select
+                value={priceRange}
+                onChange={(e) =>
+                  setPriceRange(e.target.value as "all" | "under_2m" | "2m_5m" | "over_5m")
+                }
+                aria-label="Lọc theo khoảng giá"
+                className="cursor-pointer border border-red-900/55 bg-[#12070b] px-2.5 py-1.5 text-xs text-zinc-200 focus:border-red-500 focus:outline-none"
+              >
+                <option value="all">Mọi Mức Giá</option>
+                <option value="under_2m">Dưới 2.000.000₫</option>
+                <option value="2m_5m">2.000.000₫ – 5.000.000₫</option>
+                <option value="over_5m">Trên 5.000.000₫</option>
+              </select>
+
+              <select
                 value={stockFilter}
                 onChange={(e) =>
                   setStockFilter(e.target.value as "all" | "in_stock" | "jdm_preorder")
@@ -323,6 +348,7 @@ export function StorefrontClient({
                   setSelectedMake("");
                   setSearchQuery("");
                   setSelectedKelvin("all");
+                  setPriceRange("all");
                   setStockFilter("all");
                   setSortBy("default");
                 }}

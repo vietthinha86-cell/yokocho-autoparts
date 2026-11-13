@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -150,5 +151,160 @@ describe("Akari Yokocho AutoParts API", () => {
       body: JSON.stringify({ customerName: "A" }),
     });
     assert.equal(res.status, 400);
+  });
+
+  it("blocks unauthenticated requests to admin endpoints", async () => {
+    const res = await fetch(`${baseUrl}/api/admin/overview`);
+    assert.equal(res.status, 401);
+  });
+
+  it("authenticates admin, creates/updates/deletes product, and updates order status", async () => {
+    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: process.env.ADMIN_USERNAME || "admin",
+        password: process.env.ADMIN_PASSWORD || "yokocho2026",
+      }),
+    });
+    assert.equal(loginRes.status, 200);
+    const loginData = (await loginRes.json()) as { token: string; admin: { username: string } };
+    assert.ok(loginData.token.length > 20);
+    assert.equal(loginData.admin.username, process.env.ADMIN_USERNAME || "admin");
+
+    const authHeaders = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${loginData.token}`,
+    };
+
+    const createProdRes = await fetch(`${baseUrl}/api/admin/products`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({
+        sku: "YKC-TEST-99",
+        nameVi: "Đèn Sương Mù Mini JDM Test",
+        category: "bi-fog",
+        priceVnd: 1850000,
+        stockQty: 6,
+      }),
+    });
+    assert.equal(createProdRes.status, 201);
+    const createdProd = (await createProdRes.json()) as { item: { id: string; sku: string } };
+    assert.equal(createdProd.item.sku, "YKC-TEST-99");
+
+    const patchProdRes = await fetch(`${baseUrl}/api/admin/products/${createdProd.item.id}`, {
+      method: "PATCH",
+      headers: authHeaders,
+      body: JSON.stringify({
+        priceVnd: 1950000,
+        stockQty: 12,
+        reason: "Nhập thêm hàng đêm",
+      }),
+    });
+    assert.equal(patchProdRes.status, 200);
+    const updatedProd = (await patchProdRes.json()) as {
+      item: { priceVnd: number; stockQty: number };
+    };
+    assert.equal(updatedProd.item.priceVnd, 1950000);
+    assert.equal(updatedProd.item.stockQty, 12);
+
+    const overviewRes = await fetch(`${baseUrl}/api/admin/overview`, { headers: authHeaders });
+    assert.equal(overviewRes.status, 200);
+    const overview = (await overviewRes.json()) as {
+      recentInventoryLogs: Array<{ sku: string; deltaQty: number }>;
+    };
+    assert.ok(overview.recentInventoryLogs.some((l) => l.sku === "YKC-TEST-99" && l.deltaQty === 6));
+
+    const signRes = await fetch(`${baseUrl}/api/admin/media/sign`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({
+        filename: "civic-beam-night.jpg",
+        contentType: "image/jpeg",
+      }),
+    });
+    assert.equal(signRes.status, 200);
+    const signData = (await signRes.json()) as {
+      item: { publicUrl: string; optimization: { maxWidthPx: number } };
+    };
+    assert.equal(signData.item.optimization.maxWidthPx, 1200);
+
+    const delProdRes = await fetch(`${baseUrl}/api/admin/products/${createdProd.item.id}`, {
+      method: "DELETE",
+      headers: authHeaders,
+    });
+    assert.equal(delProdRes.status, 200);
+
+    const ordersRes = await fetch(`${baseUrl}/api/admin/orders`, { headers: authHeaders });
+    assert.equal(ordersRes.status, 200);
+    const ordersData = (await ordersRes.json()) as { items: Array<{ orderCode: string }> };
+    assert.ok(ordersData.items.length >= 1);
+
+    const targetCode = ordersData.items[0].orderCode;
+    const patchOrderRes = await fetch(`${baseUrl}/api/admin/orders/${targetCode}/status`, {
+      method: "PATCH",
+      headers: authHeaders,
+      body: JSON.stringify({ status: "shipping" }),
+    });
+    assert.equal(patchOrderRes.status, 200);
+    const patchedOrder = (await patchOrderRes.json()) as { item: { status: string } };
+    assert.equal(patchedOrder.item.status, "shipping");
+  });
+
+  it("verifies VietQR payment webhook HMAC signature and marks order paid", async () => {
+    const createRes = await fetch(`${baseUrl}/api/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName: "Lê Hoàng",
+        phone: "0988777666",
+        vehicleInfo: "Honda Civic 2023",
+        shippingAddress: "Hà Nội",
+        items: [{ productId: "piaa-horn-kabuki", quantity: 1 }],
+      }),
+    });
+    assert.equal(createRes.status, 201);
+    const created = (await createRes.json()) as {
+      item: { orderCode: string; totalVnd: number };
+    };
+
+    const payloadStr = JSON.stringify({
+      content: `CK ${created.item.orderCode} AKARI`,
+      transferAmount: created.item.totalVnd,
+      referenceCode: "FT2611139999",
+    });
+
+    const badWebhookRes = await fetch(`${baseUrl}/api/payments/webhook`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-webhook-signature": "invalid-sig",
+      },
+      body: payloadStr,
+    });
+    assert.equal(badWebhookRes.status, 401);
+
+    const sig = crypto
+      .createHmac("sha256", process.env.PAYMENT_WEBHOOK_SECRET || "yokocho-vietqr-dev-secret")
+      .update(payloadStr)
+      .digest("hex");
+
+    const okWebhookRes = await fetch(`${baseUrl}/api/payments/webhook`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-webhook-signature": `sha256=${sig}`,
+      },
+      body: payloadStr,
+    });
+    assert.equal(okWebhookRes.status, 200);
+    const paidData = (await okWebhookRes.json()) as {
+      ok: boolean;
+      item: { paymentStatus: string; status: string; paymentRef: string };
+    };
+    assert.equal(paidData.ok, true);
+    assert.equal(paidData.item.paymentStatus, "paid");
+    assert.equal(paidData.item.status, "packed");
+    assert.equal(paidData.item.paymentRef, "FT2611139999");
   });
 });

@@ -37,6 +37,7 @@ export interface AutoPartProduct {
   specs: TechnicalSpec;
   summaryVi: string;
   highlights: string[];
+  videoPreviewUrl?: string;
 }
 
 export interface VehicleFitment {
@@ -82,6 +83,28 @@ export interface OrderRecord {
   subtotalVnd: number;
   shippingFeeVnd: number;
   totalVnd: number;
+  paymentStatus?: "unpaid" | "paid";
+  paymentRef?: string;
   status: "pending_confirm" | "packed" | "shipping" | "completed";
+  createdAt: string;
+}
+
+export interface AdminUserRecord {
+  id: string;
+  username: string;
+  displayName: string;
+  role: string;
+  createdAt: string;
+}
+
+export interface InventoryLogRecord {
+  id: string;
+  productId: string;
+  sku: string;
+  deltaQty: number;
+  previousQty: number;
+  newQty: number;
+  reason: string;
+  actor: string;
   createdAt: string;
 }

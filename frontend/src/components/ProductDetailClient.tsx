@@ -1,11 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CarFront,
   CheckCircle2,
+  Eye,
   Minus,
   Plus,
   ShieldCheck,
@@ -27,8 +29,17 @@ import type { AutoPartProduct } from "@/types/autoparts";
 import { AnimatedProductVisual } from "./AnimatedProductVisual";
 import { CartDrawer } from "./CartDrawer";
 import { Footer } from "./Footer";
+import { MidnightRainCanvas, type RainBeamColorMode } from "./MidnightRainCanvas";
 import { ProductCard } from "./ProductCard";
 import { ProductModal } from "./ProductModal";
+
+function inferBeamMode(kelvin: string): RainBeamColorMode {
+  const lower = kelvin.toLowerCase();
+  if (lower.includes("3000")) return "3000k";
+  if (lower.includes("4300")) return "4300k";
+  if (lower.includes("5500") || lower.includes("6000")) return "6000k";
+  return "combo";
+}
 
 interface ProductDetailClientProps {
   product: AutoPartProduct;
@@ -61,6 +72,7 @@ export function ProductDetailClient({
   const kelvinOptions = product.specs.kelvin ?? ["Tiêu chuẩn"];
   const [selectedKelvin, setSelectedKelvin] = useState(kelvinOptions[0] ?? "Tiêu chuẩn");
   const [quantity, setQuantity] = useState(1);
+  const [beamPreviewMode, setBeamPreviewMode] = useState<"low" | "high">("low");
   const [cartOpen, setCartOpen] = useState(false);
   const [modalProduct, setModalProduct] = useState<AutoPartProduct | null>(null);
 
@@ -360,6 +372,62 @@ export function ProductDetailClient({
                       {v}
                     </span>
                   ))}
+                </div>
+              </div>
+
+              {/* Simulated Night Rain Beam Preview */}
+              <div className="mt-6 border border-red-800/50 bg-[#080305] p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
+                    <Eye className="h-4 w-4 text-[#ff4d5e]" />
+                    <span>Mô Phỏng Tia Sáng Ban Đêm ({selectedKelvin})</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setBeamPreviewMode("low")}
+                      className={`cursor-pointer border px-2.5 py-1 font-mono text-[10px] font-bold transition ${
+                        beamPreviewMode === "low"
+                          ? "border-amber-400 bg-amber-500/20 text-amber-200"
+                          : "border-zinc-800 bg-black text-zinc-400 hover:border-red-500"
+                      }`}
+                    >
+                      CỐT Z-CUTOFF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBeamPreviewMode("high")}
+                      className={`cursor-pointer border px-2.5 py-1 font-mono text-[10px] font-bold transition ${
+                        beamPreviewMode === "high"
+                          ? "border-red-400 bg-[#e11d2e] text-white"
+                          : "border-zinc-800 bg-black text-zinc-400 hover:border-red-500"
+                      }`}
+                    >
+                      ĐÁ PHA LASER
+                    </button>
+                  </div>
+                </div>
+                <div className="relative h-44 w-full overflow-hidden border border-red-900/45 bg-black">
+                  <Image
+                    src="/images/yokocho-rain-stage.jpg"
+                    alt="Con hẻm đêm mưa thử tia đèn"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="object-cover object-center opacity-70"
+                  />
+                  <MidnightRainCanvas
+                    intensity="simulator"
+                    beamMode={inferBeamMode(selectedKelvin)}
+                    highBeam={beamPreviewMode === "high"}
+                  />
+                  <div className="pointer-events-none absolute right-3 bottom-2.5 left-3 z-20 flex items-center justify-between font-mono text-[10px] text-zinc-200">
+                    <span className="border border-white/15 bg-black/75 px-2 py-0.5">
+                      {beamPreviewMode === "high" ? "HIGH BEAM // LASER BOOST" : "LOW BEAM // Z-STEP"}
+                    </span>
+                    <span className="border border-red-500/40 bg-black/75 px-2 py-0.5 text-amber-300">
+                      {selectedKelvin}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

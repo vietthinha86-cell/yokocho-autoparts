@@ -29,31 +29,31 @@ Dự án được chia thành **4 Phase** rõ ràng để bạn có thể phát 
 ## Phase 2 — Cơ Sở Dữ Liệu Thật & Trang Chi Tiết / Quản Trị (Tuần 1–2)
 
 ### Backend
-- [ ] Chuyển lưu trữ từ file JSON/in-memory sang **PostgreSQL + Prisma ORM**
-- [ ] Thiết kế bảng: `Product`, `VehicleFitment`, `Order`, `OrderItem`, `AdminUser`, `DailyInventoryLog`
-- [ ] Thêm API CRUD sản phẩm & cập nhật trạng thái đơn cho Admin (`PATCH /api/admin/orders/:code`)
-- [ ] Xác thực Admin bằng JWT + Refresh Token (`POST /api/auth/login`)
-- [ ] Upload ảnh/video phụ tùng (kết nối Cloudinary hoặc Cloudflare R2 cho thư mục ảnh đèn LED thực tế)
+- [ ] Chuyển lưu trữ trực tiếp sang **PostgreSQL 18** cục bộ (đã hoàn thiện `Prisma schema`, `migration SQL`, `seed.ts` & `PrismaRepository`, chờ cấp `DATABASE_URL`)
+- [x] Thiết kế bảng: `Product`, `VehicleFitment`, `VehicleBuildCombo`, `Order`, `OrderItem`, `AdminUser`, `DailyInventoryLog`
+- [x] Thêm API CRUD sản phẩm & cập nhật trạng thái đơn cho Admin (`PATCH /api/admin/orders/:orderCode/status`)
+- [x] Xác thực Admin bằng JWT + bcrypt (`POST /api/auth/login`)
+- [x] Ký URL upload ảnh/video phụ tùng (`POST /api/admin/media/sign` cho Cloudinary / Cloudflare R2 / Sandbox)
 
 ### Frontend
-- [ ] Trang chi tiết sản phẩm chuyên sâu `/san-pham/[slug]` (SEO metadata, gallery ảnh, video test ánh sáng thực tế)
-- [ ] Trang Admin Dashboard `/admin` (giao diện tối đồng bộ phố đèn đỏ: quản lý tồn kho, duyệt đơn, cập nhật giá)
-- [ ] Lưu giỏ hàng bền vững trên `localStorage` để reload trang không mất giỏ
-- [ ] Bộ lọc nâng cao theo khoảng giá, nhiệt màu Kelvin, tình trạng kho (`Sẵn kho` / `Đặt Nhật`)
+- [x] Trang chi tiết sản phẩm chuyên sâu `/san-pham/[slug]` (SEO metadata, OpenGraph, mô phỏng tia sáng đêm mưa & thông số Nhật)
+- [x] Trang Admin Dashboard `/admin` & `/admin/login` (giao diện tối đồng bộ phố đèn đỏ: quản lý tồn kho, duyệt đơn, cập nhật giá, nhật ký kho)
+- [x] Lưu giỏ hàng bền vững trên `localStorage` để reload trang không mất giỏ
+- [x] Bộ lọc nâng cao theo khoảng giá, nhiệt màu Kelvin, tình trạng kho (`Sẵn kho` / `Đặt Nhật`)
 
 ---
 
 ## Phase 3 — Thanh Toán, Tìm Kiếm Thông Minh & Tương Tác Khách Hàng (Tuần 3–4)
 
 ### Backend
-- [ ] Tích hợp Webhook thanh toán chuyển khoản QR (VietQR / SePay / PayOS) tự xác nhận đã thanh toán
-- [ ] Gửi thông báo đơn hàng mới tức thì về Telegram Bot / Zalo OA cho chủ shop
+- [x] Tích hợp Webhook thanh toán chuyển khoản QR (`POST /api/payments/webhook` xác thực HMAC-SHA256) tự xác nhận đã thanh toán
+- [x] Gửi thông báo đơn hàng mới & thanh toán về Telegram Bot / Notification log (`NotificationDispatcher`)
 - [ ] Full-text search tiếng Việt không dấu (`PostgreSQL pg_trgm` hoặc Meilisearch) cho mã OEM & tên phụ tùng
 - [ ] Hệ thống đánh giá & ảnh lắp đặt thực tế từ khách hàng (kèm kiểm duyệt)
 
 ### Frontend
-- [ ] Hiển thị mã VietQR động ngay màn hình đặt hàng thành công
-- [ ] Trang "Xe Đã Lên Đèn" (Before / After gallery thực tế cho Mazda, Civic, Ranger, Camry...)
+- [x] Hiển thị mã VietQR động ngay màn hình đặt hàng thành công
+- [x] Trang "Xe Đã Lên Đèn" (Gallery cấu hình combo thực tế cho Civic, Bán tải Custom, Mazda 3...)
 - [ ] Mini Chatbot / Form tư vấn chọn chân bóng theo đời xe & ảnh chóa đèn
 - [ ] Tối ưu Core Web Vitals, `next/image` tối ưu dung lượng, sitemap & OpenGraph SEO
 

@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id                 String   @id @default(cuid())
+  slug               String   @unique
+  sku                String   @unique
+  oemRef             String
+  nameVi             String
+  nameJp             String
+  kanjiMark          String?
+  brand              String
+  category           String
+  priceVnd           Int
+  originalPriceVnd   Int?
+  stockStatus        String
+  stockQty           Int
+  image              String
+  badgeText          String
+  compatibleVehicles String[]
+  specsJson          Json
+  summaryVi          String
+  highlights         String[]
+  videoPreviewUrl    String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model VehicleFitment {
+  id                 String   @id @default(cuid())
+  make               String
+  model              String
+  years              String[]
+  recommendedSockets String[]
+
+  @@unique([make, model])
+}
+
+model VehicleBuildCombo {
+  id                String   @id @default(cuid())
+  vehicleTitle      String
+  jpSubtitle        String
+  driverStyle       String
+  image             String
+  recommendedMode   String
+  descriptionVi     String
+  productIds        String[]
+  bundleDiscountPct Int
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderCode       String      @unique
+  customerName    String
+  phone           String
+  vehicleInfo     String
+  shippingAddress String
+  note            String?
+  subtotalVnd     Int
+  shippingFeeVnd  Int
+  totalVnd        Int
+  paymentStatus   String      @default("unpaid")
+  paymentRef      String?
+  status          String      @default("pending_confirm")
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String
+  sku            String
+  nameVi         String
+  quantity       Int
+  selectedKelvin String?
+  unitPriceVnd   Int
+  lineTotalVnd   Int
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  displayName  String
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+}
+
+model DailyInventoryLog {
+  id          String   @id @default(cuid())
+  productId   String
+  sku         String
+  deltaQty    Int
+  previousQty Int
+  newQty      Int
+  reason      String
+  actor       String
+  createdAt   DateTime @default(now())
+}
+

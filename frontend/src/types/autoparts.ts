@@ -85,6 +85,46 @@ export interface OrderRecord {
   subtotalVnd: number;
   shippingFeeVnd: number;
   totalVnd: number;
+  paymentStatus?: "unpaid" | "paid";
+  paymentRef?: string;
   status: "pending_confirm" | "packed" | "shipping" | "completed";
   createdAt: string;
+}
+
+export interface AdminProfile {
+  id: string;
+  username: string;
+  displayName: string;
+  role: string;
+}
+
+export interface AdminOverviewResponse {
+  storageDriver: "postgresql" | "json";
+  stats: {
+    totalProducts: number;
+    lowStockProducts: number;
+    totalOrders: number;
+    pendingOrders: number;
+    paidOrders: number;
+    totalRevenueVnd: number;
+  };
+  recentNotifications: Array<{
+    channel: string;
+    event: string;
+    orderCode: string;
+    message: string;
+    sentAt: string;
+    delivered: boolean;
+  }>;
+  recentInventoryLogs: Array<{
+    id: string;
+    productId: string;
+    sku: string;
+    deltaQty: number;
+    previousQty: number;
+    newQty: number;
+    reason: string;
+    actor: string;
+    createdAt: string;
+  }>;
 }
