@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+@theme inline {
+  --font-sans: var(--font-be-vietnam), var(--font-noto-jp), "Be Vietnam Pro", system-ui, sans-serif;
+  --font-display: var(--font-chakra), var(--font-be-vietnam), var(--font-noto-jp), sans-serif;
+  --font-mono: var(--font-jetbrains), var(--font-be-vietnam), var(--font-noto-jp), ui-monospace, monospace;
+  --font-jp: var(--font-noto-jp), var(--font-be-vietnam), sans-serif;
+}
+
 :root {
   --bg-obsidian: #040204;
   --bg-lacquer: #0a0508;

@@ -149,7 +149,7 @@ export function AnimatedProductVisual({
       {kanjiMark && (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute right-4 bottom-8 font-[family-name:var(--font-serif-jp)] text-6xl font-black text-red-500/14 transition-all duration-300 select-none group-hover:scale-110 group-hover:text-red-500/40 group-hover:drop-shadow-[0_0_24px_rgba(255,46,67,0.85)]"
+          className="font-jp pointer-events-none absolute right-4 bottom-8 text-6xl font-black text-red-500/14 transition-all duration-300 select-none group-hover:scale-110 group-hover:text-red-500/40 group-hover:drop-shadow-[0_0_24px_rgba(255,46,67,0.85)]"
         >
           {kanjiMark}
         </span>
@@ -157,3 +157,4 @@ export function AnimatedProductVisual({
     </div>
   );
 }
+

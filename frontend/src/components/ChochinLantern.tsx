@@ -76,7 +76,7 @@ export function ChochinLantern({
           fill="#160305"
           fontSize="26"
           fontWeight="900"
-          style={{ fontFamily: "var(--font-serif-jp), serif" }}
+          style={{ fontFamily: "var(--font-noto-jp), sans-serif" }}
         >
           {kanji}
         </text>

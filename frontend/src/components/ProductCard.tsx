@@ -92,7 +92,7 @@ export function ProductCard({
 
         {/* Bottom Japanese nameplate */}
         <div className="absolute right-3 bottom-2.5 left-3 z-20 flex items-end justify-between gap-2">
-          <span className="font-[family-name:var(--font-serif-jp)] text-xs font-bold text-amber-300 drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]">
+          <span className="font-jp text-xs font-bold text-amber-300 drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]">
             {product.nameJp}
           </span>
           <span className="border border-white/15 bg-black/85 px-1.5 py-0.5 font-mono text-[10px] text-zinc-300">
@@ -113,7 +113,7 @@ export function ProductCard({
 
           <h3
             onClick={() => onSelect(product)}
-            className="mt-1.5 cursor-pointer text-base leading-snug font-bold text-[#f3ede8] transition-colors group-hover:text-[#ff4d5e]"
+            className="font-display mt-1.5 cursor-pointer text-[17px] leading-snug font-bold tracking-tight text-[#f3ede8] transition-colors group-hover:text-[#ff4d5e]"
           >
             {product.nameVi}
           </h3>

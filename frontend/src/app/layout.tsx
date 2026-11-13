@@ -1,23 +1,29 @@
 import type { Metadata } from "next";
-import { Be_Vietnam_Pro, JetBrains_Mono, Noto_Serif_JP } from "next/font/google";
+import { Be_Vietnam_Pro, Chakra_Petch, JetBrains_Mono, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 
 const beVietnam = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-sans",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-be-vietnam",
 });
 
-const notoSerifJp = Noto_Serif_JP({
-  subsets: ["latin"],
+const chakraPetch = Chakra_Petch({
+  subsets: ["latin", "vietnamese"],
+  weight: ["500", "600", "700"],
+  variable: "--font-chakra",
+});
+
+const notoSansJp = Noto_Sans_JP({
+  subsets: ["latin", "vietnamese"],
   weight: ["500", "700", "900"],
-  variable: "--font-serif-jp",
+  variable: "--font-noto-jp",
 });
 
 const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "600"],
-  variable: "--font-mono",
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-jetbrains",
 });
 
 export const metadata: Metadata = {
@@ -34,12 +40,11 @@ export default function RootLayout({
   return (
     <html
       lang="vi"
-      className={`${beVietnam.variable} ${notoSerifJp.variable} ${jetbrainsMono.variable}`}
+      className={`${beVietnam.variable} ${chakraPetch.variable} ${notoSansJp.variable} ${jetbrainsMono.variable}`}
     >
-      <body className="font-[family-name:var(--font-sans)] antialiased selection:bg-[#e11d2e] selection:text-white">
+      <body className="font-sans antialiased selection:bg-[#e11d2e] selection:text-white">
         {children}
       </body>
     </html>
   );
 }
-

@@ -17,14 +17,14 @@ export function Navbar({ cartCount, apiConnected, onOpenCart }: NavbarProps) {
           <ChochinLantern kanji="灯" size="sm" sway={false} />
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-[family-name:var(--font-serif-jp)] text-lg font-bold tracking-[0.14em] text-[#f3ede8] transition-colors group-hover:text-[#ff4d5e]">
+              <span className="font-display text-lg font-bold tracking-[0.14em] text-[#f3ede8] transition-colors group-hover:text-[#ff4d5e]">
                 AKARI YOKOCHO
               </span>
-              <span className="hidden border border-red-700/70 bg-red-950/75 px-1.5 py-0.5 font-[family-name:var(--font-serif-jp)] text-[11px] font-bold text-red-300 sm:inline-block">
+              <span className="font-jp hidden border border-red-700/70 bg-red-950/75 px-1.5 py-0.5 text-[11px] font-bold text-red-300 sm:inline-block">
                 赤灯横丁
               </span>
             </div>
-            <p className="text-[11px] tracking-widest text-[#9e9196] uppercase">
+            <p className="font-sans text-[11px] font-medium tracking-[0.08em] text-[#9e9196] uppercase">
               Phụ Tùng &amp; Quang Học Đêm Nhật Bản
             </p>
           </div>

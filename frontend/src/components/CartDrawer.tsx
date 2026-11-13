@@ -84,8 +84,8 @@ export function CartDrawer({
           <div className="flex items-center gap-2.5">
             <ShoppingBag className="h-5 w-5 text-[#ff4d5e]" />
             <div>
-              <h2 className="font-[family-name:var(--font-serif-jp)] text-base font-bold text-white">
-                Giỏ Hàng Đêm // 買物籠
+              <h2 className="font-display text-base font-bold tracking-wide text-white">
+                Giỏ Hàng Đêm <span className="font-jp text-xs text-red-400">{"//"} 買物籠</span>
               </h2>
               <p className="text-[11px] text-zinc-400">
                 Miễn phí vận chuyển cho đơn từ {formatVnd(FREE_SHIP_THRESHOLD)}

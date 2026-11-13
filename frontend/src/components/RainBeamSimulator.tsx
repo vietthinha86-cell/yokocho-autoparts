@@ -132,10 +132,11 @@ export function RainBeamSimulator() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
-            <p className="font-mono text-xs tracking-[0.22em] text-[#ff4d5e] uppercase">
-              夜間雨天テスト // Phòng Thử 2 Luồng Ánh Sáng Live
+            <p className="flex items-center gap-2 text-xs font-bold tracking-[0.16em] text-[#ff4d5e] uppercase">
+              <span className="font-jp">夜間雨天テスト</span>
+              <span className="font-mono">{"//"} Phòng Thử 2 Luồng Ánh Sáng Live</span>
             </p>
-            <h2 className="mt-1.5 font-[family-name:var(--font-serif-jp)] text-2xl font-bold text-[#f3ede8] sm:text-3xl">
+            <h2 className="font-display mt-1.5 text-2xl font-bold tracking-tight text-[#f3ede8] sm:text-3xl">
               Trải Nghiệm Rọi Đèn Xuyên Con Hẻm Mưa Đêm
             </h2>
           </div>
@@ -280,9 +281,11 @@ export function RainBeamSimulator() {
               <div className="absolute right-5 bottom-5 left-5 z-30 border border-red-700/55 bg-black/85 p-3.5 backdrop-blur-md">
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                   <div>
-                    <p className="font-[family-name:var(--font-serif-jp)] text-sm font-bold text-white">
+                    <p className="font-display text-sm font-bold text-white">
                       {active.label}{" "}
-                      <span className="ml-2 font-bold text-[#ff4d5e]">{active.jpLabel}</span>
+                      <span className="font-jp ml-2 text-xs font-bold text-[#ff4d5e]">
+                        {active.jpLabel}
+                      </span>
                     </p>
                     <p className="mt-0.5 text-xs text-zinc-300">{active.description}</p>
                   </div>
@@ -359,7 +362,7 @@ export function RainBeamSimulator() {
                         {profile.kelvinText}
                       </p>
                     </div>
-                    <span className="font-[family-name:var(--font-serif-jp)] text-xs font-bold text-[#ff4d5e]">
+                    <span className="font-jp text-xs font-bold text-[#ff4d5e]">
                       {profile.jpLabel}
                     </span>
                   </button>

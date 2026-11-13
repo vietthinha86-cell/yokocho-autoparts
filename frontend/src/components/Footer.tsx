@@ -7,8 +7,8 @@ export function Footer() {
         <div className="flex items-center gap-4">
           <ChochinLantern kanji="灯" size="sm" sway={false} />
           <div>
-            <p className="font-[family-name:var(--font-serif-jp)] text-base font-bold tracking-widest text-white">
-              AKARI YOKOCHO // 赤灯横丁
+            <p className="font-display text-base font-bold tracking-widest text-white">
+              AKARI YOKOCHO <span className="font-jp text-sm text-red-400">{"//"} 赤灯横丁</span>
             </p>
             <p className="mt-0.5 text-xs text-zinc-400">
               Phụ tùng ô tô &amp; Quang học JDM phong cách Phố Đèn Đỏ Đêm Nhật Bản.

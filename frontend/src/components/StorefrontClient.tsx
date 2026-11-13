@@ -123,11 +123,11 @@ export function StorefrontClient({
       />
 
       {/* Razor-sharp animated Midnight Garage Spec Ticker */}
-      <div className="overflow-hidden border-b border-red-800/45 bg-[#0b0306] py-2 font-mono text-[11px] tracking-[0.18em] text-zinc-300">
+      <div className="overflow-hidden border-b border-red-800/45 bg-[#0b0306] py-1.5 font-sans text-[11px] font-semibold tracking-[0.06em] text-zinc-300">
         <div className="animate-ticker">
           {[...TICKER_ITEMS, ...TICKER_ITEMS].map((text, idx) => (
-            <span key={`${text}-${idx}`} className="mx-6 inline-flex items-center gap-3 whitespace-nowrap">
-              <span className="h-1.5 w-1.5 bg-[#ff2e43] shadow-[0_0_8px_#ff2e43]" />
+            <span key={`${text}-${idx}`} className="mx-5 inline-flex items-center gap-2.5 whitespace-nowrap">
+              <span className="text-[10px] text-[#ff2e43]">◆</span>
               <span className={idx % 2 === 0 ? "text-amber-300" : "text-zinc-200"}>{text}</span>
             </span>
           ))}
@@ -149,10 +149,11 @@ export function StorefrontClient({
         <section id="catalog" className="relative mx-auto max-w-7xl px-4 pt-16 pb-14 sm:px-6 lg:px-8">
           <div className="flex flex-col justify-between gap-5 border-b border-red-800/45 pb-6 md:flex-row md:items-end">
             <div>
-              <p className="font-mono text-xs tracking-[0.22em] text-[#ff4d5e] uppercase">
-                夜の陳列棚 // Kệ Hàng Đêm ({filteredProducts.length} sản phẩm)
+              <p className="flex items-center gap-2 text-xs font-bold tracking-[0.16em] text-[#ff4d5e] uppercase">
+                <span className="font-jp">夜の陳列棚</span>
+                <span className="font-mono">{"//"} Kệ Hàng Đêm ({filteredProducts.length} sản phẩm)</span>
               </p>
-              <h2 className="mt-1.5 font-[family-name:var(--font-serif-jp)] text-2xl font-bold text-[#f3ede8] sm:text-3xl">
+              <h2 className="font-display mt-1.5 text-2xl font-bold tracking-tight text-[#f3ede8] sm:text-3xl">
                 Phụ Tùng &amp; Đèn Tăng Sáng Tuyển Chọn
               </h2>
             </div>
@@ -172,7 +173,7 @@ export function StorefrontClient({
                     }`}
                   >
                     <span>{cat.label}</span>
-                    <span className="ml-1.5 font-[family-name:var(--font-serif-jp)] text-[10px] opacity-85">
+                    <span className="font-jp ml-1.5 text-[10px] opacity-85">
                       {cat.jp}
                     </span>
                   </button>

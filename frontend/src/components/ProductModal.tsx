@@ -52,7 +52,7 @@ export function ProductModal({ product, onClose, onAddToCart }: ProductModalProp
               variant="modal"
             />
             <div className="pointer-events-none absolute right-4 bottom-4 left-4 z-20">
-              <p className="font-[family-name:var(--font-serif-jp)] text-sm font-bold text-amber-300">
+              <p className="font-jp text-sm font-bold text-amber-300">
                 {product.nameJp}
               </p>
               <p className="font-mono text-xs text-zinc-300">
@@ -65,7 +65,9 @@ export function ProductModal({ product, onClose, onAddToCart }: ProductModalProp
             <span className="font-mono text-xs font-bold tracking-widest text-[#ff4d5e] uppercase">
               {product.brand}
             </span>
-            <h3 className="mt-1 text-xl font-bold text-[#f3ede8]">{product.nameVi}</h3>
+            <h3 className="font-display mt-1 text-xl font-bold tracking-tight text-[#f3ede8]">
+              {product.nameVi}
+            </h3>
             <p className="mt-2.5 text-sm leading-relaxed text-zinc-300">{product.summaryVi}</p>
 
             {/* Highlights */}
@@ -80,8 +82,9 @@ export function ProductModal({ product, onClose, onAddToCart }: ProductModalProp
 
             {/* Spec Table */}
             <div className="mt-5 border border-red-900/45 bg-[#080305] p-3.5 text-xs">
-              <p className="mb-2 font-mono text-[11px] font-bold tracking-wider text-red-400 uppercase">
-                仕様書 // Bảng Thông Số Kỹ Thuật
+              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold tracking-wider text-red-400 uppercase">
+                <span className="font-jp">仕様書</span>
+                <span className="font-mono">{"//"} Bảng Thông Số Kỹ Thuật</span>
               </p>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
                 {product.specs.wattage && (
