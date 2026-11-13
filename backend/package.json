@@ -1,0 +1,24 @@
+{
+  "name": "yokocho-autoparts-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend REST API for Akari Yokocho Automotive Parts (Japanese Red-Lantern Night Garage)",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --experimental-strip-types src/server.ts",
+    "start": "node --experimental-strip-types src/server.ts",
+    "test": "node --test --experimental-strip-types tests/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.13.10",
+    "typescript": "^5.8.2"
+  }
+}
+

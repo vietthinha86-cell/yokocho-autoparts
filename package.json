@@ -1,0 +1,14 @@
+{
+  "name": "yokocho-autoparts-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AKARI YOKOCHO (赤灯横丁) — Web phụ tùng ô tô phong cách Ma Mị Phố Đèn Đỏ Nhật Bản",
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "test:backend": "npm --prefix backend test",
+    "typecheck": "npm --prefix backend run typecheck && npm --prefix frontend run typecheck",
+    "build": "npm --prefix frontend run build"
+  }
+}
+

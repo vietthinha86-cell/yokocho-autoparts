@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+:root {
+  --bg-obsidian: #060406;
+  --bg-lacquer: #0e090c;
+  --bg-panel: #150d11;
+  --crimson: #e11d2e;
+  --crimson-bright: #ff2e43;
+  --amber-lantern: #f59e0b;
+  --washi-text: #ede6e1;
+  --ash-muted: #9a8d92;
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: var(--bg-obsidian);
+  color: var(--washi-text);
+}
+
+body {
+  background-color: var(--bg-obsidian);
+  color: var(--washi-text);
+  overflow-x: hidden;
+  background-image:
+    radial-gradient(circle at 18% 8%, rgba(225, 29, 46, 0.14), transparent 36%),
+    radial-gradient(circle at 86% 24%, rgba(245, 158, 11, 0.08), transparent 32%),
+    radial-gradient(circle at 50% 90%, rgba(225, 29, 46, 0.1), transparent 45%);
+}
+
+/* Shoji / Kumiko subtle grid texture */
+.kumiko-grid {
+  background-image:
+    linear-gradient(to right, rgba(225, 29, 46, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(225, 29, 46, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Haunting crimson lantern glow */
+.lantern-glow {
+  box-shadow:
+    0 0 28px rgba(225, 29, 46, 0.25),
+    inset 0 0 18px rgba(225, 29, 46, 0.1);
+}
+
+.lantern-card {
+  background: linear-gradient(180deg, rgba(23, 13, 17, 0.94) 0%, rgba(10, 6, 8, 0.98) 100%);
+  border: 1px solid rgba(225, 29, 46, 0.22);
+  transition: transform 280ms ease, border-color 280ms ease, box-shadow 280ms ease;
+}
+
+.lantern-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 46, 67, 0.65);
+  box-shadow:
+    0 16px 40px -12px rgba(225, 29, 46, 0.38),
+    0 0 24px rgba(225, 29, 46, 0.16);
+}
+
+/* Japanese vertical text rail */
+.vertical-jp {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+}
+
+@keyframes lanternSway {
+  0%,
+  100% {
+    transform: rotate(-1.8deg);
+  }
+  50% {
+    transform: rotate(1.8deg);
+  }
+}
+
+.animate-lantern-sway {
+  transform-origin: top center;
+  animation: lanternSway 5.5s ease-in-out infinite;
+}
+
+@keyframes emberPulse {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-ember {
+  animation: emberPulse 3.2s ease-in-out infinite;
+}
+
+@keyframes rainDrift {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: -32px 240px;
+  }
+}
+
+.midnight-rain {
+  background-image: repeating-linear-gradient(
+    105deg,
+    transparent,
+    transparent 18px,
+    rgba(255, 255, 255, 0.035) 18px,
+    rgba(255, 255, 255, 0.035) 19px
+  );
+  animation: rainDrift 1.4s linear infinite;
+}
+

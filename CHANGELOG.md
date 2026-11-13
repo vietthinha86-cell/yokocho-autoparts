@@ -1,0 +1,11 @@
+# Nhật Ký Cập Nhật Web Theo Ngày (Daily Changelog)
+
+Mỗi ngày phát triển hoặc cập nhật web sẽ được ghi nhận tại đây và đẩy thẳng lên GitHub.
+
+## [2026-11-13] — Ngày 01: Khởi tạo dự án & Giao diện Ma Mị Phố Đèn Đỏ Nhật Bản
+- **UI/UX:** Xây dựng toàn bộ storefront `AKARI YOKOCHO // 赤灯横丁` phong cách ma mị phố đèn đỏ đêm mưa Nhật Bản (Obsidian `#060406` + Crimson Lantern `#e11d2e` + Amber Fog `#f59e0b`).
+- **Assets:** Tạo 4 hình ảnh chủ đạo (phố đêm mưa JDM, Bi-LED projector, Bi-Gầm 3000K, Đèn hậu LED khói & cùm phanh).
+- **Features:** Tra cứu phụ tùng theo hãng xe (`FitmentBar`), phòng thử tia sáng đêm mưa 3000K/4300K/6000K (`RainBeamSimulator`), modal thông số Nhật, giỏ hàng + đặt hàng + tra cứu mã đơn.
+- **Backend:** Khởi tạo Express 5 + TypeScript API với 6 endpoints và 4 automated tests pass.
+- **Plan & CI/CD:** Hoàn thiện bộ tài liệu `ARCHITECTURE.md`, `ROADMAP.md`, `DEPLOY_GUIDE.md`, `DAILY_WORKFLOW.md`, `scripts/daily-push.ps1` và GitHub Actions CI.
+
