@@ -24,6 +24,7 @@ export interface AutoPartProduct {
   oemRef: string;
   nameVi: string;
   nameJp: string;
+  kanjiMark?: string;
   brand: string;
   category: PartCategory;
   priceVnd: number;

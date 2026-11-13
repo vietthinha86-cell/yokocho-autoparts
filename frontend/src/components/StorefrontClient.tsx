@@ -125,8 +125,8 @@ export function StorefrontClient({
         />
 
         {/* Product Catalog Section */}
-        <section id="catalog" className="mx-auto max-w-7xl px-4 pt-16 pb-8 sm:px-6 lg:px-8">
-          <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+        <section id="catalog" className="relative mx-auto max-w-7xl px-4 pt-16 pb-14 sm:px-6 lg:px-8">
+          <div className="flex flex-col justify-between gap-5 border-b border-red-900/35 pb-6 md:flex-row md:items-end">
             <div>
               <p className="font-mono text-xs tracking-[0.22em] text-red-400 uppercase">
                 夜の陳列棚 // Kệ Hàng Đêm ({filteredProducts.length} sản phẩm)
@@ -144,14 +144,14 @@ export function StorefrontClient({
                     key={cat.id}
                     type="button"
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                    className={`border px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
                       active
-                        ? "border-red-500 bg-[#e11d2e] text-white shadow-[0_0_16px_rgba(225,29,46,0.4)]"
-                        : "border-red-900/40 bg-[#12090d] text-zinc-300 hover:border-red-600/60"
+                        ? "border-red-400 bg-[#e11d2e] text-white shadow-[0_0_16px_rgba(225,29,46,0.45)]"
+                        : "border-red-900/45 bg-[#12090d] text-zinc-300 hover:border-red-500/70"
                     }`}
                   >
                     <span>{cat.label}</span>
-                    <span className="ml-1.5 font-[family-name:var(--font-serif-jp)] text-[10px] opacity-75">
+                    <span className="ml-1.5 font-[family-name:var(--font-serif-jp)] text-[10px] opacity-80">
                       {cat.jp}
                     </span>
                   </button>

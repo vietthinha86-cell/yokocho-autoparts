@@ -21,11 +21,17 @@ export function FitmentBar({
   const activeVehicle = fitments.find((f) => f.make === selectedMake);
 
   return (
-    <section id="fitment" className="mx-auto -mt-8 relative z-20 max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div className="lantern-glow rounded-2xl border border-red-800/50 bg-[#0d070a]/95 p-5 backdrop-blur-xl sm:p-6">
+    <section id="fitment" className="relative z-20 mx-auto -mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="yokocho-panel lantern-glow relative p-5 backdrop-blur-xl sm:p-6">
+        {/* Japanese HUD Corner Ticks */}
+        <span className="pointer-events-none absolute top-0 left-0 h-3 w-3 border-t-2 border-l-2 border-red-500" />
+        <span className="pointer-events-none absolute top-0 right-0 h-3 w-3 border-t-2 border-r-2 border-red-500" />
+        <span className="pointer-events-none absolute bottom-0 left-0 h-3 w-3 border-b-2 border-l-2 border-red-500" />
+        <span className="pointer-events-none absolute right-0 bottom-0 h-3 w-3 border-r-2 border-b-2 border-red-500" />
+
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-xs font-mono tracking-widest text-red-400 uppercase">
+            <div className="flex items-center gap-2 font-mono text-xs tracking-widest text-red-400 uppercase">
               <Car className="h-4 w-4" />
               <span>車両適合検索 // Tra Cứu Tương Thích Theo Xe</span>
             </div>
@@ -34,21 +40,21 @@ export function FitmentBar({
             </h2>
           </div>
 
-          <div className="relative w-full lg:w-80">
+          <div className="relative w-full lg:w-84">
             <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-zinc-500" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Tìm mã SKU, KOITO, H11, Bi-LED..."
-              className="w-full rounded-lg border border-red-900/50 bg-[#150b10] py-2.5 pr-9 pl-10 text-sm text-[#ede6e1] placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+              className="w-full border border-red-900/55 bg-[#090406] py-2.5 pr-9 pl-10 text-sm text-[#ede6e1] placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => onSearchChange("")}
                 aria-label="Xóa từ khóa"
-                className="absolute top-1/2 right-2.5 -translate-y-1/2 text-zinc-400 hover:text-white cursor-pointer"
+                className="absolute top-1/2 right-2.5 -translate-y-1/2 cursor-pointer text-zinc-400 hover:text-white"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -60,10 +66,10 @@ export function FitmentBar({
           <button
             type="button"
             onClick={() => onSelectMake("")}
-            className={`rounded-md border px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+            className={`cursor-pointer border px-3.5 py-1.5 font-mono text-xs font-semibold tracking-wide uppercase transition ${
               selectedMake === ""
-                ? "border-red-500 bg-[#e11d2e] text-white shadow-[0_0_16px_rgba(225,29,46,0.45)]"
-                : "border-red-900/40 bg-[#140b0f] text-zinc-300 hover:border-red-600/60"
+                ? "border-red-400 bg-[#e11d2e] text-white shadow-[0_0_16px_rgba(225,29,46,0.5)]"
+                : "border-red-900/45 bg-[#11080c] text-zinc-300 hover:border-red-500/70"
             }`}
           >
             Tất Cả Dòng Xe
@@ -75,10 +81,10 @@ export function FitmentBar({
                 key={fit.make}
                 type="button"
                 onClick={() => onSelectMake(active ? "" : fit.make)}
-                className={`rounded-md border px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                className={`cursor-pointer border px-3.5 py-1.5 font-mono text-xs font-semibold tracking-wide uppercase transition ${
                   active
-                    ? "border-red-500 bg-[#e11d2e] text-white shadow-[0_0_16px_rgba(225,29,46,0.45)]"
-                    : "border-red-900/40 bg-[#140b0f] text-zinc-300 hover:border-red-600/60"
+                    ? "border-red-400 bg-[#e11d2e] text-white shadow-[0_0_16px_rgba(225,29,46,0.5)]"
+                    : "border-red-900/45 bg-[#11080c] text-zinc-300 hover:border-red-500/70"
                 }`}
               >
                 {fit.make}
@@ -88,11 +94,11 @@ export function FitmentBar({
         </div>
 
         {activeVehicle && (
-          <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-amber-500/30 bg-amber-950/20 px-4 py-2.5 text-xs">
-            <span className="text-amber-300 font-semibold">
+          <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 border-l-2 border-amber-500 bg-amber-950/20 px-4 py-2.5 text-xs">
+            <span className="font-semibold text-amber-300">
               Dòng xe hỗ trợ ({activeVehicle.make}): {activeVehicle.model}
             </span>
-            <span className="text-zinc-400">
+            <span className="font-mono text-zinc-400">
               Đời xe: {activeVehicle.years[0]} – {activeVehicle.years[activeVehicle.years.length - 1]}
             </span>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -100,7 +106,7 @@ export function FitmentBar({
               {activeVehicle.recommendedSockets.map((sock) => (
                 <span
                   key={sock}
-                  className="rounded border border-red-800/50 bg-[#1a0b10] px-2 py-0.5 font-mono text-[11px] text-red-200"
+                  className="border border-red-800/55 bg-[#17090e] px-2 py-0.5 font-mono text-[11px] text-red-200"
                 >
                   {sock}
                 </span>
@@ -112,4 +118,3 @@ export function FitmentBar({
     </section>
   );
 }
-

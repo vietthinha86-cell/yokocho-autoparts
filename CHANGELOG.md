@@ -11,3 +11,5 @@ Mỗi ngày phát triển hoặc cập nhật web sẽ được ghi nhận tại
 
 
 - **[2026-11-13 21:02]** feat(ui): mo ta thay doi hom nay
+
+- **[2026-11-13 21:35]** feat(ui): nang cap giao dien Pho Den Do Nhat Ban v2 — 6/6 anh san pham rieng biet, rem Noren + bang hieu neon doc, hieu ung anh den theo chuot + Kanji watermark, va Phong Thu 2 Tia Sang Z-Cutoff + Da Pha Laser (+80W) tren con hem mua dem.

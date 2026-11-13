@@ -34,7 +34,9 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
     <section id="order-lookup" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Order Lookup Card */}
-        <div className="rounded-2xl border border-red-900/45 bg-[#0d070a] p-6 lg:col-span-6">
+        <div className="yokocho-panel relative p-6 lg:col-span-6">
+          <span className="pointer-events-none absolute top-0 left-0 h-2.5 w-2.5 border-t border-l border-red-500/80" />
+          <span className="pointer-events-none absolute right-0 bottom-0 h-2.5 w-2.5 border-r border-b border-red-500/80" />
           <div className="flex items-center gap-2 font-mono text-xs tracking-widest text-red-400 uppercase">
             <PackageSearch className="h-4 w-4" />
             <span>注文追跡 // Tra Cứu Đơn Hàng Real-time</span>
@@ -89,7 +91,9 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
         </div>
 
         {/* Project Roadmap Summary Card */}
-        <div className="rounded-2xl border border-red-900/45 bg-[#0d070a] p-6 lg:col-span-6">
+        <div className="yokocho-panel relative p-6 lg:col-span-6">
+          <span className="pointer-events-none absolute top-0 left-0 h-2.5 w-2.5 border-t border-l border-amber-500/80" />
+          <span className="pointer-events-none absolute right-0 bottom-0 h-2.5 w-2.5 border-r border-b border-amber-500/80" />
           <div className="flex items-center gap-2 font-mono text-xs tracking-widest text-amber-400 uppercase">
             <GitBranch className="h-4 w-4" />
             <span>GitHub Roadmap &amp; Daily CI/CD</span>

@@ -30,7 +30,7 @@ export function ProductModal({ product, onClose, onAddToCart }: ProductModalProp
       role="dialog"
       aria-modal="true"
     >
-      <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-red-700/50 bg-[#0d070a] shadow-[0_0_60px_rgba(225,29,46,0.35)]">
+      <div className="yokocho-panel relative max-h-[90vh] w-full max-w-3xl overflow-y-auto border-red-600/60 shadow-[0_0_60px_rgba(225,29,46,0.4)]">
         <button
           type="button"
           onClick={onClose}

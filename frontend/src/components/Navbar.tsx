@@ -66,11 +66,11 @@ export function Navbar({ cartCount, apiConnected, onOpenCart }: NavbarProps) {
           <button
             type="button"
             onClick={onOpenCart}
-            className="relative inline-flex items-center gap-2 rounded-lg border border-red-600/50 bg-gradient-to-b from-red-950/80 to-[#14070b] px-3.5 py-2 text-sm font-semibold text-[#ede6e1] shadow-[0_0_18px_rgba(225,29,46,0.28)] transition hover:border-red-400 hover:shadow-[0_0_24px_rgba(225,29,46,0.5)] cursor-pointer"
+            className="relative inline-flex items-center gap-2 border border-red-600/60 bg-gradient-to-b from-red-950/85 to-[#14070b] px-3.5 py-2 text-sm font-semibold text-[#ede6e1] shadow-[0_0_18px_rgba(225,29,46,0.3)] transition hover:border-red-400 hover:shadow-[0_0_24px_rgba(225,29,46,0.55)] cursor-pointer"
           >
             <ShoppingBag className="h-4 w-4 text-red-400" />
             <span>Giỏ Hàng</span>
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#e11d2e] px-1.5 font-mono text-xs font-bold text-white">
+            <span className="inline-flex h-5 min-w-5 items-center justify-center bg-[#e11d2e] px-1.5 font-mono text-xs font-bold text-white">
               {cartCount}
             </span>
           </button>
