@@ -1,7 +1,11 @@
 import cors from "cors";
 import express from "express";
 import path from "node:path";
-import { AUTO_PARTS_CATALOG, VEHICLE_FITMENTS } from "./data/catalog.ts";
+import {
+  AUTO_PARTS_CATALOG,
+  VEHICLE_COMBOS,
+  VEHICLE_FITMENTS,
+} from "./data/catalog.ts";
 import { OrderStore } from "./store/orderStore.ts";
 import type { OrderItemInput, OrderItemRecord, OrderRecord } from "./types.ts";
 
@@ -42,9 +46,18 @@ export function createApp(options: AppOptions = {}) {
     });
   });
 
+  app.get("/api/combos", (_req, res) => {
+    res.json({
+      items: VEHICLE_COMBOS,
+    });
+  });
+
   app.get("/api/products", (req, res) => {
     const category = typeof req.query.category === "string" ? req.query.category.trim() : "";
     const make = typeof req.query.make === "string" ? req.query.make.trim().toLowerCase() : "";
+    const kelvin = typeof req.query.kelvin === "string" ? req.query.kelvin.trim().toLowerCase() : "";
+    const stock = typeof req.query.stock === "string" ? req.query.stock.trim() : "";
+    const sort = typeof req.query.sort === "string" ? req.query.sort.trim() : "";
     const query = typeof req.query.q === "string" ? req.query.q.trim().toLowerCase() : "";
 
     const filtered = AUTO_PARTS_CATALOG.filter((part) => {
@@ -55,6 +68,15 @@ export function createApp(options: AppOptions = {}) {
         make &&
         !part.compatibleVehicles.some((v) => v.toLowerCase() === make)
       ) {
+        return false;
+      }
+      if (kelvin) {
+        const hasKelvin = (part.specs.kelvin ?? []).some((k) =>
+          k.toLowerCase().includes(kelvin),
+        );
+        if (!hasKelvin) return false;
+      }
+      if (stock && stock !== "all" && part.stockStatus !== stock) {
         return false;
       }
       if (query) {
@@ -75,14 +97,23 @@ export function createApp(options: AppOptions = {}) {
       return true;
     });
 
+    const sorted = [...filtered];
+    if (sort === "price_asc") {
+      sorted.sort((a, b) => a.priceVnd - b.priceVnd);
+    } else if (sort === "price_desc") {
+      sorted.sort((a, b) => b.priceVnd - a.priceVnd);
+    }
+
     res.json({
-      total: filtered.length,
-      items: filtered,
+      total: sorted.length,
+      items: sorted,
     });
   });
 
   app.get("/api/products/:slug", (req, res) => {
-    const product = AUTO_PARTS_CATALOG.find((p) => p.slug === req.params.slug || p.id === req.params.slug);
+    const product = AUTO_PARTS_CATALOG.find(
+      (p) => p.slug === req.params.slug || p.id === req.params.slug,
+    );
     if (!product) {
       res.status(404).json({ error: "Không tìm thấy phụ tùng theo mã yêu cầu." });
       return;
@@ -164,4 +195,3 @@ export function createApp(options: AppOptions = {}) {
 
   return app;
 }
-

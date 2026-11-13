@@ -1,8 +1,21 @@
 "use client";
 
 import Image from "next/image";
-import { CheckCircle2, Minus, Plus, ShoppingBag, Trash2, Truck, X } from "lucide-react";
-import { useState } from "react";
+import {
+  ArrowDownRight,
+  Check,
+  CheckCircle2,
+  Copy,
+  Minus,
+  Plus,
+  QrCode,
+  ShoppingBag,
+  Trash2,
+  Truck,
+  X,
+} from "lucide-react";
+import QRCode from "qrcode";
+import { useMemo, useState } from "react";
 import { formatVnd, submitOrder } from "@/lib/api";
 import type { CartItem, OrderRecord } from "@/types/autoparts";
 
@@ -14,10 +27,49 @@ interface CartDrawerProps {
   onRemove: (productId: string, selectedKelvin: string) => void;
   onClearCart: () => void;
   onOrderCreated: (order: OrderRecord) => void;
+  onJumpToLookup?: (orderCode: string) => void;
 }
+
+const BANK_INFO = {
+  bankCode: "MBBANK",
+  bankName: "MB Bank (Quân Đội)",
+  accountNumber: "0901889900",
+  accountHolder: "AKARI YOKOCHO GARAGE",
+};
 
 const FREE_SHIP_THRESHOLD = 3_000_000;
 const SHIPPING_FEE = 45_000;
+
+function tlv(tag: string, value: string): string {
+  return `${tag}${String(value.length).padStart(2, "0")}${value}`;
+}
+
+function crc16Ccitt(input: string): string {
+  let crc = 0xffff;
+  for (let i = 0; i < input.length; i += 1) {
+    crc ^= input.charCodeAt(i) << 8;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc & 0x8000) !== 0 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, "0");
+}
+
+function buildVietQrPayload(accountNumber: string, amountVnd: number, memo: string): string {
+  const beneficiary = tlv("00", "970422") + tlv("01", accountNumber);
+  const merchantInfo = tlv("00", "A000000727") + tlv("01", beneficiary) + tlv("02", "QRIBFTTA");
+  const extraData = tlv("08", memo);
+  const body =
+    tlv("00", "01") +
+    tlv("01", "12") +
+    tlv("38", merchantInfo) +
+    tlv("53", "704") +
+    tlv("54", String(Math.round(amountVnd))) +
+    tlv("58", "VN") +
+    tlv("62", extraData) +
+    "6304";
+  return body + crc16Ccitt(body);
+}
 
 export function CartDrawer({
   open,
@@ -27,6 +79,7 @@ export function CartDrawer({
   onRemove,
   onClearCart,
   onOrderCreated,
+  onJumpToLookup,
 }: CartDrawerProps) {
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
@@ -36,6 +89,34 @@ export function CartDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successOrder, setSuccessOrder] = useState<OrderRecord | null>(null);
+  const [copiedField, setCopiedField] = useState<"account" | "memo" | null>(null);
+
+  const qrSvg = useMemo(() => {
+    if (!successOrder) return null;
+    const payload = buildVietQrPayload(
+      BANK_INFO.accountNumber,
+      successOrder.totalVnd,
+      successOrder.orderCode,
+    );
+    const symbol = QRCode.create(payload, { errorCorrectionLevel: "M" });
+    const size = symbol.modules.size;
+    let pathData = "";
+    for (let r = 0; r < size; r += 1) {
+      for (let c = 0; c < size; c += 1) {
+        if (symbol.modules.get(r, c)) {
+          pathData += `M${c} ${r}h1v1h-1z`;
+        }
+      }
+    }
+    return { size, pathData };
+  }, [successOrder]);
+
+  function copyValue(field: "account" | "memo", value: string) {
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    void navigator.clipboard.writeText(value);
+    setCopiedField(field);
+    window.setTimeout(() => setCopiedField(null), 1800);
+  }
 
   if (!open) {
     return null;
@@ -107,10 +188,10 @@ export function CartDrawer({
 
         <div className="flex-1 overflow-y-auto p-5">
           {successOrder ? (
-            <div className="chamfer-md border border-emerald-600/60 bg-emerald-950/30 p-5">
+            <div className="chamfer-md border border-emerald-600/60 bg-emerald-950/25 p-5">
               <div className="flex items-center gap-2 text-emerald-300">
                 <CheckCircle2 className="h-5 w-5" />
-                <h3 className="font-bold">Đặt Hàng Thành Công!</h3>
+                <h3 className="font-display text-base font-bold">Đặt Hàng Thành Công!</h3>
               </div>
               <p className="mt-2 text-xs text-zinc-200">
                 Mã đơn của bạn là{" "}
@@ -119,21 +200,116 @@ export function CartDrawer({
                 </span>
                 . Kỹ thuật viên sẽ gọi xác nhận giắc cắm đúng đời xe trước khi xuất kho.
               </p>
+
+              {/* VietQR Bank Transfer Box */}
+              <div className="mt-4 border border-red-800/50 bg-[#0b0407] p-3.5">
+                <div className="mb-2.5 flex items-center justify-between text-[11px] font-bold tracking-wider text-amber-300 uppercase">
+                  <span className="inline-flex items-center gap-1.5">
+                    <QrCode className="h-3.5 w-3.5 text-[#ff4d5e]" />
+                    VietQR Thanh Toán Nhanh (Hoặc COD)
+                  </span>
+                  <span className="font-mono text-zinc-400">{BANK_INFO.bankCode}</span>
+                </div>
+
+                {qrSvg && (
+                  <div className="mx-auto w-fit border-2 border-red-500/70 bg-white p-2.5 shadow-[0_0_24px_rgba(225,29,46,0.35)]">
+                    <svg
+                      viewBox={`0 0 ${qrSvg.size} ${qrSvg.size}`}
+                      className="h-40 w-40"
+                      role="img"
+                      aria-label={`Mã VietQR thanh toán đơn ${successOrder.orderCode}`}
+                    >
+                      <rect width={qrSvg.size} height={qrSvg.size} fill="#ffffff" />
+                      <path d={qrSvg.pathData} fill="#0c0407" />
+                    </svg>
+                  </div>
+                )}
+
+                <div className="mt-3 space-y-2 border-t border-red-900/40 pt-3 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-zinc-400">Ngân hàng</span>
+                    <span className="font-semibold text-zinc-100">{BANK_INFO.bankName}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-zinc-400">Chủ TK</span>
+                    <span className="font-mono text-zinc-100">{BANK_INFO.accountHolder}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-zinc-400">Số TK</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-white">
+                        {BANK_INFO.accountNumber}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => copyValue("account", BANK_INFO.accountNumber)}
+                        className="cursor-pointer border border-red-800/60 bg-black/70 px-1.5 py-0.5 font-mono text-[10px] text-amber-300 hover:border-amber-400"
+                      >
+                        {copiedField === "account" ? (
+                          <Check className="inline h-3 w-3 text-emerald-300" />
+                        ) : (
+                          <Copy className="inline h-3 w-3" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-zinc-400">Nội dung CK</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-amber-300">
+                        {successOrder.orderCode}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => copyValue("memo", successOrder.orderCode)}
+                        className="cursor-pointer border border-red-800/60 bg-black/70 px-1.5 py-0.5 font-mono text-[10px] text-amber-300 hover:border-amber-400"
+                      >
+                        {copiedField === "memo" ? (
+                          <Check className="inline h-3 w-3 text-emerald-300" />
+                        ) : (
+                          <Copy className="inline h-3 w-3" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="mt-4 space-y-1 border-t border-emerald-800/40 pt-3 text-xs text-zinc-200">
                 <p>Khách hàng: {successOrder.customerName}</p>
                 <p>Xe: {successOrder.vehicleInfo}</p>
-                <p>Tổng thanh toán: {formatVnd(successOrder.totalVnd)}</p>
+                <p className="font-mono font-bold text-[#ff4d5e]">
+                  Tổng thanh toán: {formatVnd(successOrder.totalVnd)}
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSuccessOrder(null);
-                  onClose();
-                }}
-                className="chamfer-sm mt-5 w-full cursor-pointer bg-[#e11d2e] py-2.5 text-xs font-bold text-white"
-              >
-                Tiếp Tục Xem Phụ Tùng
-              </button>
+
+              <div className="mt-4 flex flex-col gap-2">
+                {onJumpToLookup && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const code = successOrder.orderCode;
+                      setSuccessOrder(null);
+                      onClose();
+                      onJumpToLookup(code);
+                    }}
+                    className="chamfer-sm inline-flex w-full cursor-pointer items-center justify-center gap-1.5 border border-amber-400/70 bg-amber-950/35 py-2.5 text-xs font-bold text-amber-300 transition hover:bg-amber-950/60"
+                  >
+                    <span>Theo Dõi Tiến Độ Đơn Này</span>
+                    <ArrowDownRight className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSuccessOrder(null);
+                    onClose();
+                  }}
+                  className="chamfer-sm w-full cursor-pointer bg-[#e11d2e] py-2.5 text-xs font-bold text-white"
+                >
+                  Tiếp Tục Xem Phụ Tùng
+                </button>
+              </div>
             </div>
           ) : items.length === 0 ? (
             <div className="chamfer-md flex h-56 flex-col items-center justify-center border border-dashed border-red-800/50 text-center">

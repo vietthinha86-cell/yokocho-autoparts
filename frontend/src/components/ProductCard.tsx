@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus, Shield, Zap } from "lucide-react";
+import { GitCompareArrows, Plus, Shield, Zap } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { formatVnd } from "@/lib/api";
 import type { AutoPartProduct } from "@/types/autoparts";
@@ -9,8 +10,10 @@ import { AnimatedProductVisual } from "./AnimatedProductVisual";
 interface ProductCardProps {
   product: AutoPartProduct;
   index?: number;
+  isCompared?: boolean;
   onSelect: (product: AutoPartProduct) => void;
   onQuickAdd: (product: AutoPartProduct) => void;
+  onToggleCompare?: (product: AutoPartProduct) => void;
 }
 
 const STOCK_LABELS: Record<
@@ -34,8 +37,10 @@ const STOCK_LABELS: Record<
 export function ProductCard({
   product,
   index = 0,
+  isCompared = false,
   onSelect,
   onQuickAdd,
+  onToggleCompare,
 }: ProductCardProps) {
   const stock = STOCK_LABELS[product.stockStatus];
   const [spot, setSpot] = useState({ x: 50, y: 50, active: false });
@@ -111,11 +116,10 @@ export function ProductCard({
             <span>OEM: {product.oemRef}</span>
           </div>
 
-          <h3
-            onClick={() => onSelect(product)}
-            className="font-display mt-1.5 cursor-pointer text-[17px] leading-snug font-bold tracking-tight text-[#f3ede8] transition-colors group-hover:text-[#ff4d5e]"
-          >
-            {product.nameVi}
+          <h3 className="font-display mt-1.5 text-[17px] leading-snug font-bold tracking-tight text-[#f3ede8] transition-colors group-hover:text-[#ff4d5e]">
+            <Link href={`/san-pham/${product.slug}`} className="hover:underline">
+              {product.nameVi}
+            </Link>
           </h3>
 
           <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-300">
@@ -163,18 +167,34 @@ export function ProductCard({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {onToggleCompare && (
+              <button
+                type="button"
+                onClick={() => onToggleCompare(product)}
+                title="So sánh thông số sản phẩm"
+                aria-label={`So sánh ${product.nameVi}`}
+                className={`chamfer-sm inline-flex cursor-pointer items-center gap-1 border px-2.5 py-2 text-xs font-semibold transition ${
+                  isCompared
+                    ? "border-amber-400 bg-amber-500/20 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.3)]"
+                    : "border-zinc-700 bg-[#12070b] text-zinc-300 hover:border-amber-400/70 hover:text-amber-200"
+                }`}
+              >
+                <GitCompareArrows className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{isCompared ? "Đã Chọn" : "So Sánh"}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onSelect(product)}
-              className="chamfer-sm cursor-pointer border border-red-800/65 bg-[#16090d] px-3.5 py-2 text-xs font-semibold text-zinc-200 transition hover:border-red-400 hover:text-white"
+              className="chamfer-sm cursor-pointer border border-red-800/65 bg-[#16090d] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-red-400 hover:text-white"
             >
               Thông Số
             </button>
             <button
               type="button"
               onClick={() => onQuickAdd(product)}
-              className="chamfer-sm inline-flex cursor-pointer items-center gap-1 bg-gradient-to-r from-[#c81628] to-[#ff2e43] px-3.5 py-2 text-xs font-bold text-white shadow-[0_0_20px_rgba(225,29,46,0.5)] transition hover:brightness-115"
+              className="chamfer-sm inline-flex cursor-pointer items-center gap-1 bg-gradient-to-r from-[#c81628] to-[#ff2e43] px-3 py-2 text-xs font-bold text-white shadow-[0_0_20px_rgba(225,29,46,0.5)] transition hover:brightness-115"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Thêm</span>

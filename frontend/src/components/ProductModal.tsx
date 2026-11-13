@@ -1,6 +1,7 @@
 "use client";
 
-import { CheckCircle2, Plus, ShieldCheck, X } from "lucide-react";
+import { CheckCircle2, ExternalLink, Plus, ShieldCheck, X } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { formatVnd } from "@/lib/api";
 import type { AutoPartProduct } from "@/types/autoparts";
@@ -139,24 +140,34 @@ export function ProductModal({ product, onClose, onAddToCart }: ProductModalProp
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-between border-t border-red-900/40 pt-4">
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-red-900/40 pt-4">
               <div>
                 <p className="text-xs text-zinc-400">Giá niêm yết</p>
                 <p className="font-mono text-2xl font-bold text-[#ff4d5e]">
                   {formatVnd(product.priceVnd)}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  onAddToCart(product, activeKelvin);
-                  onClose();
-                }}
-                className="chamfer-sm inline-flex cursor-pointer items-center gap-2 bg-gradient-to-r from-[#b91c1c] to-[#ff2e43] px-5 py-3 text-sm font-bold text-white shadow-[0_0_26px_rgba(225,29,46,0.55)] transition hover:brightness-115"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Thêm Vào Giỏ Hàng</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/san-pham/${product.slug}`}
+                  onClick={onClose}
+                  className="chamfer-sm inline-flex items-center gap-1.5 border border-red-800/65 bg-[#15080c] px-3.5 py-2.5 text-xs font-semibold text-zinc-200 transition hover:border-red-400 hover:text-white"
+                >
+                  <span>Trang Chi Tiết</span>
+                  <ExternalLink className="h-3.5 w-3.5 text-amber-300" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onAddToCart(product, activeKelvin);
+                    onClose();
+                  }}
+                  className="chamfer-sm inline-flex cursor-pointer items-center gap-2 bg-gradient-to-r from-[#b91c1c] to-[#ff2e43] px-5 py-3 text-sm font-bold text-white shadow-[0_0_26px_rgba(225,29,46,0.55)] transition hover:brightness-115"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Thêm Vào Giỏ Hàng</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

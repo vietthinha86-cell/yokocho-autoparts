@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { CloudRain, Eye, Flame, Moon, Sun, Zap } from "lucide-react";
+import { CloudRain, Eye, Flame, Moon, SplitSquareHorizontal, Sun, Zap } from "lucide-react";
 import { useState } from "react";
 import { MidnightRainCanvas, type RainBeamColorMode } from "./MidnightRainCanvas";
 
@@ -118,8 +118,10 @@ const BEAM_PROFILES: BeamProfile[] = [
 export function RainBeamSimulator() {
   const [mode, setMode] = useState<BeamMode>("combo");
   const [highBeam, setHighBeam] = useState(false);
-  const active = BEAM_PROFILES.find((p) => p.id === mode) ?? BEAM_PROFILES[4];
+  const [compareHalogen, setCompareHalogen] = useState(true);
+  const [splitPct, setSplitPct] = useState(46);
 
+  const active = BEAM_PROFILES.find((p) => p.id === mode) ?? BEAM_PROFILES[4];
   const canHighBeam = mode !== "off";
   const highBeamActive = highBeam && canHighBeam;
   const effectiveDistance = highBeamActive ? active.distanceMeters + 140 : active.distanceMeters;
@@ -141,16 +143,16 @@ export function RainBeamSimulator() {
             </h2>
           </div>
           <p className="max-w-md text-sm text-zinc-300">
-            Bật từng chế độ nhiệt màu hoặc giữ nút{" "}
-            <span className="font-bold text-sky-300">Đá Pha Laser (+80W)</span> để thấy hạt mưa
-            bắt sáng và đường cắt Z-Step thực tế.
+            Kéo thanh gạt để đối chiếu <span className="font-semibold text-amber-300">Halogen Zin 35W</span>{" "}
+            với đường cắt Bi-LED Laser thực tế, hoặc bấm{" "}
+            <span className="font-bold text-sky-300">Đá Pha Laser (+80W)</span>.
           </p>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-12">
           {/* Interactive Live Dark Alley Projection Viewport */}
           <div className="yokocho-panel chamfer-md relative overflow-hidden lg:col-span-8">
-            <div className="relative h-80 w-full sm:h-[440px]">
+            <div className="relative h-80 w-full select-none sm:h-[440px]">
               {/* Subtle breathing camera cinemagraph */}
               <div className="animate-hero-cinema relative h-full w-full">
                 <Image
@@ -205,15 +207,14 @@ export function RainBeamSimulator() {
                 </>
               )}
 
-              {/* Razor-Sharp Japanese Z-Step Cut-off Horizon Edge + Chromatic Blue Dispersion */}
+              {/* Razor-Sharp Japanese Z-Step Cut-off Horizon Edge */}
               {mode !== "off" && (
-                <div className="pointer-events-none absolute right-[8%] left-[8%] top-[47%] h-3">
+                <div className="pointer-events-none absolute top-[47%] right-[8%] left-[8%] h-3">
                   <svg
                     viewBox="0 0 800 24"
                     preserveAspectRatio="none"
                     className="h-full w-full overflow-visible"
                   >
-                    {/* Chromatic signature violet/blue rim */}
                     <polyline
                       points="0,14 350,14 405,6 800,6"
                       fill="none"
@@ -221,7 +222,6 @@ export function RainBeamSimulator() {
                       strokeWidth="3.5"
                       opacity="0.7"
                     />
-                    {/* Crisp razor cutoff core */}
                     <polyline
                       points="0,16 350,16 405,8 800,8"
                       fill="none"
@@ -232,7 +232,7 @@ export function RainBeamSimulator() {
                 </div>
               )}
 
-              {/* Real-Time Interactive 60fps Canvas Rain Lit Inside Headlight Cone */}
+              {/* Real-Time Interactive 60fps Canvas Rain */}
               <div className="pointer-events-none absolute inset-0 z-10">
                 <MidnightRainCanvas
                   intensity="simulator"
@@ -240,6 +240,54 @@ export function RainBeamSimulator() {
                   highBeam={highBeamActive}
                 />
               </div>
+
+              {/* Before / After Halogen Zin 35W Clipped Comparison Overlay (Left half) */}
+              {compareHalogen && (
+                <>
+                  <div
+                    className="pointer-events-none absolute inset-0 z-20"
+                    style={{ clipPath: `inset(0 ${100 - splitPct}% 0 0)` }}
+                  >
+                    <Image
+                      src="/images/alley-beam-stage.jpg"
+                      alt="Đèn Halogen Zin nguyên bản yếu và nhòe trong mưa"
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 66vw"
+                      className="object-cover brightness-[0.42] contrast-115 sepia-[0.28]"
+                    />
+                    <div
+                      className="absolute inset-x-[12%] bottom-0 h-[44%] bg-[radial-gradient(ellipse_at_bottom,rgba(217,119,6,0.34)_0%,rgba(120,53,15,0.12)_52%,transparent_80%)] mix-blend-screen"
+                      style={{
+                        clipPath: "polygon(30% 100%, 70% 100%, 84% 45%, 16% 45%)",
+                      }}
+                    />
+                    <span className="chamfer-sm absolute top-14 left-5 border border-zinc-600/80 bg-black/85 px-2.5 py-1 font-mono text-[10px] font-bold text-zinc-300">
+                      HALOGEN ZIN 35W (MỜ &bull; 38m)
+                    </span>
+                  </div>
+
+                  {/* Glowing Vertical Laser Split Bar */}
+                  <div
+                    className="pointer-events-none absolute inset-y-0 z-30 w-[2px] bg-gradient-to-b from-amber-300 via-[#ff2e43] to-amber-300 shadow-[0_0_18px_#ff2e43]"
+                    style={{ left: `${splitPct}%` }}
+                  >
+                    <div className="absolute top-1/2 left-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center border border-amber-300 bg-[#120408]/95 text-amber-300 shadow-[0_0_16px_rgba(245,158,11,0.75)]">
+                      <SplitSquareHorizontal className="h-4 w-4" />
+                    </div>
+                  </div>
+
+                  {/* Interactive Range Control covering middle track for smooth dragging */}
+                  <input
+                    type="range"
+                    min={12}
+                    max={88}
+                    value={splitPct}
+                    onChange={(e) => setSplitPct(Number(e.target.value))}
+                    aria-label="Kéo để so sánh đèn Halogen zin bên trái và đèn nâng cấp bên phải"
+                    className="absolute inset-x-0 top-14 bottom-24 z-30 w-full cursor-ew-resize opacity-0"
+                  />
+                </>
+              )}
 
               {/* Optical Viewfinder Crosshairs */}
               <div className="pointer-events-none absolute inset-3 z-20">
@@ -250,7 +298,7 @@ export function RainBeamSimulator() {
               </div>
 
               {/* Top HUD */}
-              <div className="absolute top-5 right-5 left-5 z-30 flex flex-wrap items-center justify-between gap-2">
+              <div className="absolute top-4 right-4 left-4 z-40 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="chamfer-sm border border-red-600/75 bg-black/85 px-3 py-1 font-mono text-xs font-semibold text-red-200 backdrop-blur-md">
                     {active.kelvinText}
@@ -262,23 +310,38 @@ export function RainBeamSimulator() {
                   )}
                 </div>
 
-                <button
-                  type="button"
-                  disabled={!canHighBeam}
-                  onClick={() => setHighBeam((prev) => !prev)}
-                  className={`chamfer-sm inline-flex cursor-pointer items-center gap-1.5 border px-3.5 py-1.5 font-mono text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                    highBeamActive
-                      ? "border-sky-300 bg-sky-400 text-slate-950 shadow-[0_0_28px_rgba(56,189,248,0.85)]"
-                      : "border-red-600/70 bg-black/85 text-sky-300 hover:border-sky-400"
-                  }`}
-                >
-                  <Zap className="h-3.5 w-3.5" />
-                  <span>{highBeamActive ? "Tắt Đá Pha" : "Đá Pha Laser (+80W)"}</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCompareHalogen((prev) => !prev)}
+                    className={`chamfer-sm inline-flex cursor-pointer items-center gap-1.5 border px-3 py-1.5 font-mono text-xs font-bold transition ${
+                      compareHalogen
+                        ? "border-amber-400 bg-amber-950/90 text-amber-200 shadow-[0_0_16px_rgba(245,158,11,0.45)]"
+                        : "border-red-700/60 bg-black/85 text-zinc-300 hover:border-amber-400"
+                    }`}
+                  >
+                    <SplitSquareHorizontal className="h-3.5 w-3.5" />
+                    <span>{compareHalogen ? "So Sánh Zin: BẬT" : "So Sánh Zin"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={!canHighBeam}
+                    onClick={() => setHighBeam((prev) => !prev)}
+                    className={`chamfer-sm inline-flex cursor-pointer items-center gap-1.5 border px-3.5 py-1.5 font-mono text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                      highBeamActive
+                        ? "border-sky-300 bg-sky-400 text-slate-950 shadow-[0_0_28px_rgba(56,189,248,0.85)]"
+                        : "border-red-600/70 bg-black/85 text-sky-300 hover:border-sky-400"
+                    }`}
+                  >
+                    <Zap className="h-3.5 w-3.5" />
+                    <span>{highBeamActive ? "Tắt Đá Pha" : "Đá Pha Laser (+80W)"}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Bottom Optical Telemetry Readout */}
-              <div className="absolute right-5 bottom-5 left-5 z-30 border border-red-700/55 bg-black/85 p-3.5 backdrop-blur-md">
+              <div className="absolute right-4 bottom-4 left-4 z-40 border border-red-700/55 bg-black/85 p-3.5 backdrop-blur-md">
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                   <div>
                     <p className="font-display text-sm font-bold text-white">

@@ -46,6 +46,18 @@ export interface VehicleFitment {
   recommendedSockets: string[];
 }
 
+export interface VehicleBuildCombo {
+  id: string;
+  vehicleTitle: string;
+  jpSubtitle: string;
+  driverStyle: string;
+  image: string;
+  recommendedMode: string;
+  descriptionVi: string;
+  productIds: string[];
+  bundleDiscountPct: number;
+}
+
 export interface OrderItemInput {
   productId: string;
   quantity: number;
@@ -73,4 +85,3 @@ export interface OrderRecord {
   status: "pending_confirm" | "packed" | "shipping" | "completed";
   createdAt: string;
 }
-

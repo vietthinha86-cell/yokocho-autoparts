@@ -48,12 +48,26 @@ const MOTION_PRESETS: Record<string, MotionPreset> = {
       "left-[14%] top-[34%] h-24 w-28 rounded-full bg-[radial-gradient(circle,rgba(225,29,46,0.36)_0%,transparent_72%)] mix-blend-screen",
     badgeLabel: "7.200 LM EMITTER",
   },
+  "yokocho-miniz-h4": {
+    coreClass:
+      "right-[15%] bottom-[21%] h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(186,230,253,0.72)_0%,rgba(56,189,248,0.32)_46%,transparent_74%)] mix-blend-screen",
+    secondaryClass:
+      "right-[22%] bottom-[27%] h-12 w-12 rounded-full border border-sky-200/70 shadow-[0_0_22px_rgba(56,189,248,0.75)]",
+    badgeLabel: "MINI-Z LENS H4",
+  },
   "tokyogarage-caliper-4pot": {
     coreClass:
       "right-[22%] top-[20%] h-40 w-24 rounded-full bg-[radial-gradient(ellipse,rgba(255,46,67,0.46)_0%,rgba(245,158,11,0.18)_52%,transparent_75%)] mix-blend-screen",
     secondaryClass:
       "left-[16%] top-[6%] h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(251,146,60,0.44)_0%,transparent_70%)] mix-blend-screen",
     badgeLabel: "FORGED 7075 CNC",
+  },
+  "piaa-horn-kabuki": {
+    coreClass:
+      "left-[22%] top-[40%] h-24 w-24 rounded-full border border-red-400/50 bg-[radial-gradient(circle,rgba(225,29,46,0.4)_0%,transparent_72%)] mix-blend-screen",
+    secondaryClass:
+      "right-[22%] top-[40%] h-24 w-24 rounded-full border border-red-400/50 bg-[radial-gradient(circle,rgba(225,29,46,0.4)_0%,transparent_72%)] mix-blend-screen",
+    badgeLabel: "112DB TWIN TONE",
   },
   "yokocho-underbody-amber": {
     coreClass:
@@ -157,4 +171,3 @@ export function AnimatedProductVisual({
     </div>
   );
 }
-

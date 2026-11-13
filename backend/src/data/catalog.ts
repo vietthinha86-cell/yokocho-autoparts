@@ -1,4 +1,4 @@
-import type { AutoPartProduct, VehicleFitment } from "../types.ts";
+import type { AutoPartProduct, VehicleBuildCombo, VehicleFitment } from "../types.ts";
 
 export const VEHICLE_FITMENTS: VehicleFitment[] = [
   {
@@ -177,6 +177,40 @@ export const AUTO_PARTS_CATALOG: AutoPartProduct[] = [
     ],
   },
   {
+    id: "yokocho-miniz-h4",
+    slug: "yokocho-miniz-h4",
+    sku: "YKC-MZ-H450",
+    oemRef: "STANLEY-MINI-H4",
+    nameVi: "Bi-LED Mini H4 Chân Xoáy Yokocho Mini-Z — Giữ Chóa Zin",
+    nameJp: "極小H4プロジェクター・零",
+    kanjiMark: "零",
+    brand: "AKARI YOKOCHO",
+    category: "bi-led",
+    priceVnd: 2450000,
+    originalPriceVnd: 2850000,
+    stockStatus: "in_stock",
+    stockQty: 19,
+    image: "/images/miniz-h4-bulb.jpg",
+    badgeText: "KHÔNG CẮT CHÓA",
+    compatibleVehicles: ["Toyota", "Hyundai", "Mitsubishi", "Honda"],
+    specs: {
+      wattage: "50W Cos / 62W Pha",
+      kelvin: ["4300K", "5500K", "6000K"],
+      socket: "H4 Plug & Play (Tháo bóng lắp trực tiếp)",
+      lumens: "8.100 lm / cặp",
+      voltage: "12V DC",
+      warrantyMonths: 24,
+      origin: "Thấu kính lồi mini gắn liền bóng H4",
+    },
+    summaryVi:
+      "Giải pháp tối ưu cho Vios, Accent, Xpander, City đời đầu muốn có mặt cắt Cos Z-Step sắc nét như Bi-LED nhưng không cần khui đèn.",
+    highlights: [
+      "Cài chân H4 nguyên bản trong 15 phút, về zin dễ dàng",
+      "Đuôi tản nhiệt gọn, vừa chụp cao su chống bụi xe phổ thông",
+      "Đường cắt Cos thẳng băng, đá pha gắt tách bạch",
+    ],
+  },
+  {
     id: "tokyogarage-caliper-4pot",
     slug: "tokyogarage-caliper-4pot",
     sku: "TKG-BRK-4P01",
@@ -193,7 +227,7 @@ export const AUTO_PARTS_CATALOG: AutoPartProduct[] = [
     badgeText: "ĐẶT NHẬT 7 NGÀY",
     compatibleVehicles: ["Honda", "Mazda", "Toyota"],
     specs: {
-      voltage: "Tương thích mâm 17\" trở lên (5x114.3)",
+      voltage: 'Tương thích mâm 17" trở lên (5x114.3)',
       warrantyMonths: 36,
       origin: "Nhôm rèn 7075 Anodized Đỏ Huyết • Hàng JDM",
     },
@@ -203,6 +237,38 @@ export const AUTO_PARTS_CATALOG: AutoPartProduct[] = [
       "Giảm quãng đường phanh tốc độ cao, chống mất phanh nhiệt",
       "Kèm pat CNC theo đúng mã moay-ơ xe",
       "Phụ kiện kèm má phanh gốm ít bụi mâm",
+    ],
+  },
+  {
+    id: "piaa-horn-kabuki",
+    slug: "piaa-horn-kabuki",
+    sku: "PIA-HRN-4500",
+    oemRef: "PIAA-HO14-JP",
+    nameVi: "Cặp Còi Sò Đôi Nhật PIAA Bass Horn 400/500Hz — Chống Nước",
+    nameJp: "響・防滴ダブルホーン",
+    kanjiMark: "響",
+    brand: "PIAA JAPAN",
+    category: "chassis-brake",
+    priceVnd: 1150000,
+    originalPriceVnd: 1350000,
+    stockStatus: "in_stock",
+    stockQty: 28,
+    image: "/images/piaa-twin-horn.jpg",
+    badgeText: "CHÍNH HÃNG NHẬT",
+    compatibleVehicles: ["Toyota", "Honda", "Mazda", "Hyundai", "Ford", "Mitsubishi"],
+    specs: {
+      wattage: "112dB • Tần số kép 400Hz + 500Hz",
+      socket: "Giắc còi 2 chân Plug & Play (kèm rơ-le bảo vệ)",
+      voltage: "12V DC",
+      warrantyMonths: 24,
+      origin: "Thiết kế Nhật Bản • Màng lọc chống mưa lụt",
+    },
+    summaryVi:
+      "Âm thanh còi trầm ấm, vang gọn chuẩn xe sang Nhật Bản — không bị rè khi đi qua vùng ngập nước hay mưa rào.",
+    highlights: [
+      "Tiếng kép 400Hz + 500Hz dứt khoát, không chói gắt",
+      "Miệng loa úp chống nước mưa & bùn bắn khoang máy",
+      "Tặng kèm dây chia giắc zin cho các dòng xe Nhật – Hàn",
     ],
   },
   {
@@ -237,5 +303,44 @@ export const AUTO_PARTS_CATALOG: AutoPartProduct[] = [
       "Lấy nguồn qua tẩu cầu chì phụ, an toàn hệ thống điện",
       "Có công tắc ngắt nhanh khi lưu thông ban ngày",
     ],
+  },
+];
+
+export const VEHICLE_COMBOS: VehicleBuildCombo[] = [
+  {
+    id: "combo-civic-midnight",
+    vehicleTitle: "Honda Civic — Cấu Hình Phố Đêm 6000K + 3000K",
+    jpSubtitle: "シビック・夜戦仕様",
+    driverStyle: "Đi phố mưa + Cao tốc ban đêm",
+    image: "/images/build-civic-night.jpg",
+    recommendedMode: "Combo Bi-LED V9 + Bi-Gầm Kitsune F30",
+    descriptionVi:
+      "Cặp Bi-LED Yami V9 cắt nét Cos phẳng chống chói kết hợp Bi-Gầm 3000K vàng bám vạch kẻ đường ướt sũng.",
+    productIds: ["akari-biled-yami-v9", "kuro-fog-kitsune-f30"],
+    bundleDiscountPct: 5,
+  },
+  {
+    id: "combo-ranger-fog-pass",
+    vehicleTitle: "Bán Tải Custom (Ranger / Triton) — Cấu Hình Đèo Dốc Sương Mù Dày",
+    jpSubtitle: "オフロード・濃霧突破",
+    driverStyle: "Off-road đèo núi + Mưa bão lớn",
+    image: "/images/build-ranger-rain.jpg",
+    recommendedMode: "Bi-Gầm 3000K + Bóng LED + Còi PIAA",
+    descriptionVi:
+      "Tối ưu gầm cao phá sương bằng Bi-Gầm 3000K công suất 55W kết hợp bóng LED Osram pha xa và còi đôi chống nước.",
+    productIds: ["kuro-fog-kitsune-f30", "shinigami-led-bulb-h11", "piaa-horn-kabuki"],
+    bundleDiscountPct: 8,
+  },
+  {
+    id: "combo-mazda-kabukicho",
+    vehicleTitle: "Mazda 3 — Full Set Kabukicho Đỏ Huyết",
+    jpSubtitle: "マツダ3・赤灯フル装備",
+    driverStyle: "Showcar đường phố + Đêm Tokyo",
+    image: "/images/build-mazda3-tokyo.jpg",
+    recommendedMode: "Đèn Hậu Khói Oni + Đèn Gầm Đỏ + Bi-LED V9",
+    descriptionVi:
+      "Ngoại hình ma mị hoàn chỉnh cả trước và sau: ánh sáng Laser phía trước, hậu quét LED khói và gầm đỏ phản chiếu mặt đường.",
+    productIds: ["akari-biled-yami-v9", "yokocho-tail-oni-seq", "yokocho-underbody-amber"],
+    bundleDiscountPct: 7,
   },
 ];

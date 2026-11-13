@@ -48,6 +48,41 @@ describe("Akari Yokocho AutoParts API", () => {
     assert.equal(data.items[0].id, "kuro-fog-kitsune-f30");
   });
 
+  it("filters by kelvin and sorts ascending by price", async () => {
+    const res = await fetch(`${baseUrl}/api/products?kelvin=3000K&sort=price_asc`);
+    assert.equal(res.status, 200);
+    const data = (await res.json()) as {
+      total: number;
+      items: Array<{ id: string; priceVnd: number }>;
+    };
+    assert.ok(data.total >= 2);
+    for (let i = 1; i < data.items.length; i += 1) {
+      assert.ok(data.items[i].priceVnd >= data.items[i - 1].priceVnd);
+    }
+  });
+
+  it("returns curated vehicle build combos referencing catalog parts", async () => {
+    const [combosRes, productsRes] = await Promise.all([
+      fetch(`${baseUrl}/api/combos`),
+      fetch(`${baseUrl}/api/products`),
+    ]);
+    assert.equal(combosRes.status, 200);
+    const combosData = (await combosRes.json()) as {
+      items: Array<{ id: string; productIds: string[] }>;
+    };
+    const productsData = (await productsRes.json()) as {
+      items: Array<{ id: string }>;
+    };
+    const validIds = new Set(productsData.items.map((p) => p.id));
+    assert.equal(combosData.items.length, 3);
+    for (const combo of combosData.items) {
+      assert.ok(combo.productIds.length >= 2);
+      for (const pid of combo.productIds) {
+        assert.ok(validIds.has(pid), `Missing product ${pid} in catalog`);
+      }
+    }
+  });
+
   it("creates and retrieves an order with free shipping calculation", async () => {
     const createRes = await fetch(`${baseUrl}/api/orders`, {
       method: "POST",
@@ -81,6 +116,33 @@ describe("Akari Yokocho AutoParts API", () => {
     assert.equal(fetched.item.customerName, "Nguyễn Minh");
   });
 
+  it("applies standard shipping fee when subtotal is under 3M VND", async () => {
+    const createRes = await fetch(`${baseUrl}/api/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName: "Trần Tuấn",
+        phone: "0912345678",
+        vehicleInfo: "Toyota Vios 2021",
+        shippingAddress: "Đà Nẵng",
+        items: [
+          {
+            productId: "piaa-horn-kabuki",
+            quantity: 1,
+          },
+        ],
+      }),
+    });
+
+    assert.equal(createRes.status, 201);
+    const created = (await createRes.json()) as {
+      item: { subtotalVnd: number; shippingFeeVnd: number; totalVnd: number };
+    };
+    assert.equal(created.item.subtotalVnd, 1150000);
+    assert.equal(created.item.shippingFeeVnd, 45000);
+    assert.equal(created.item.totalVnd, 1195000);
+  });
+
   it("rejects empty checkout payload with 400", async () => {
     const res = await fetch(`${baseUrl}/api/orders`, {
       method: "POST",
@@ -90,4 +152,3 @@ describe("Akari Yokocho AutoParts API", () => {
     assert.equal(res.status, 400);
   });
 });
-

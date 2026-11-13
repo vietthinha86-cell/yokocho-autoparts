@@ -1,8 +1,23 @@
 "use client";
 
+import { ArrowUpDown, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { AutoPartProduct, CartItem, OrderRecord, PartCategory, VehicleFitment } from "@/types/autoparts";
+import {
+  addProductsToStoredCart,
+  clearStoredCart,
+  removeStoredCartItem,
+  updateStoredCartQty,
+  usePersistentCart,
+} from "@/lib/cartStorage";
+import type {
+  AutoPartProduct,
+  OrderRecord,
+  PartCategory,
+  VehicleBuildCombo,
+  VehicleFitment,
+} from "@/types/autoparts";
 import { CartDrawer } from "./CartDrawer";
+import { CompareModal } from "./CompareModal";
 import { FitmentBar } from "./FitmentBar";
 import { Footer } from "./Footer";
 import { HeroAlley } from "./HeroAlley";
@@ -11,10 +26,12 @@ import { OrderLookup } from "./OrderLookup";
 import { ProductCard } from "./ProductCard";
 import { ProductModal } from "./ProductModal";
 import { RainBeamSimulator } from "./RainBeamSimulator";
+import { VehicleBuildsShowcase } from "./VehicleBuildsShowcase";
 
 interface StorefrontClientProps {
   initialProducts: AutoPartProduct[];
   initialFitments: VehicleFitment[];
+  initialCombos: VehicleBuildCombo[];
   apiConnected: boolean;
 }
 
@@ -23,8 +40,17 @@ const CATEGORIES: Array<{ id: "all" | PartCategory; label: string; jp: string }>
   { id: "bi-led", label: "Đèn Bi-LED & Bóng", jp: "ヘッドライト" },
   { id: "bi-fog", label: "Bi Gầm Phá Sương", jp: "フォグ" },
   { id: "tail-light", label: "Đèn Hậu Khói", jp: "テール" },
-  { id: "chassis-brake", label: "Phanh & Gầm", jp: "ブレーキ" },
+  { id: "chassis-brake", label: "Phanh, Còi & Gầm", jp: "ブレーキ" },
   { id: "jdm-aero", label: "Đồ Chơi Đêm JDM", jp: "夜光" },
+];
+
+const KELVIN_FILTERS = [
+  { id: "all", label: "Mọi Nhiệt Màu" },
+  { id: "3000K", label: "3000K Phá Sương" },
+  { id: "4300K", label: "4300K Nắng Ấm" },
+  { id: "5500K", label: "5500K Trắng Sạch" },
+  { id: "6000K", label: "6000K Trắng Mát" },
+  { id: "Crimson", label: "Đỏ Huyết / Khói" },
 ];
 
 const TICKER_ITEMS = [
@@ -39,23 +65,41 @@ const TICKER_ITEMS = [
 export function StorefrontClient({
   initialProducts,
   initialFitments,
+  initialCombos,
   apiConnected,
 }: StorefrontClientProps) {
   const [selectedCategory, setSelectedCategory] = useState<"all" | PartCategory>("all");
   const [selectedMake, setSelectedMake] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedKelvin, setSelectedKelvin] = useState("all");
+  const [stockFilter, setStockFilter] = useState<"all" | "in_stock" | "jdm_preorder">("all");
+  const [sortBy, setSortBy] = useState<"default" | "price_asc" | "price_desc">("default");
+  const [compareIds, setCompareIds] = useState<string[]>([]);
   const [activeProduct, setActiveProduct] = useState<AutoPartProduct | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
-  const [cart, setCart] = useState<CartItem[]>([]);
   const [lastOrderCode, setLastOrderCode] = useState<string | undefined>(undefined);
+
+  const cart = usePersistentCart();
 
   const filteredProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return initialProducts.filter((part) => {
+    const list = initialProducts.filter((part) => {
       if (selectedCategory !== "all" && part.category !== selectedCategory) {
         return false;
       }
       if (selectedMake && !part.compatibleVehicles.includes(selectedMake)) {
+        return false;
+      }
+      if (selectedKelvin !== "all") {
+        const joinedKelvin = (part.specs.kelvin ?? []).join(" ").toLowerCase();
+        if (!joinedKelvin.includes(selectedKelvin.toLowerCase())) {
+          return false;
+        }
+      }
+      if (stockFilter === "in_stock" && part.stockStatus !== "in_stock") {
+        return false;
+      }
+      if (stockFilter === "jdm_preorder" && part.stockStatus !== "jdm_preorder") {
         return false;
       }
       if (q) {
@@ -73,43 +117,60 @@ export function StorefrontClient({
       }
       return true;
     });
-  }, [initialProducts, selectedCategory, selectedMake, searchQuery]);
 
-  function addToCart(product: AutoPartProduct, selectedKelvin?: string) {
-    const kelvin = selectedKelvin ?? product.specs.kelvin?.[0] ?? "Tiêu chuẩn";
-    setCart((prev) => {
-      const idx = prev.findIndex(
-        (i) => i.product.id === product.id && i.selectedKelvin === kelvin,
-      );
-      if (idx >= 0) {
-        return prev.map((item, i) =>
-          i === idx ? { ...item, quantity: item.quantity + 1 } : item,
-        );
-      }
-      return [...prev, { product, quantity: 1, selectedKelvin: kelvin }];
-    });
+    if (sortBy === "price_asc") {
+      return [...list].sort((a, b) => a.priceVnd - b.priceVnd);
+    }
+    if (sortBy === "price_desc") {
+      return [...list].sort((a, b) => b.priceVnd - a.priceVnd);
+    }
+    return list;
+  }, [
+    initialProducts,
+    selectedCategory,
+    selectedMake,
+    searchQuery,
+    selectedKelvin,
+    stockFilter,
+    sortBy,
+  ]);
+
+  const comparedProducts = useMemo(
+    () =>
+      compareIds
+        .map((id) => initialProducts.find((p) => p.id === id))
+        .filter((p): p is AutoPartProduct => Boolean(p)),
+    [compareIds, initialProducts],
+  );
+
+  function addToCart(product: AutoPartProduct, kelvin?: string) {
+    addProductsToStoredCart([{ product, selectedKelvin: kelvin }]);
     setCartOpen(true);
   }
 
-  function updateQty(productId: string, selectedKelvin: string, delta: number) {
-    setCart((prev) =>
-      prev
-        .map((item) =>
-          item.product.id === productId && item.selectedKelvin === selectedKelvin
-            ? { ...item, quantity: item.quantity + delta }
-            : item,
-        )
-        .filter((item) => item.quantity > 0),
-    );
+  function handleAddCombo(parts: AutoPartProduct[]) {
+    addProductsToStoredCart(parts.map((p) => ({ product: p })));
+    setCartOpen(true);
   }
 
-  function removeItem(productId: string, selectedKelvin: string) {
-    setCart((prev) =>
-      prev.filter(
-        (item) =>
-          !(item.product.id === productId && item.selectedKelvin === selectedKelvin),
-      ),
-    );
+  function handleToggleCompare(product: AutoPartProduct) {
+    setCompareIds((prev) => {
+      if (prev.includes(product.id)) {
+        return prev.filter((id) => id !== product.id);
+      }
+      if (prev.length >= 3) {
+        return [...prev.slice(1), product.id];
+      }
+      return [...prev, product.id];
+    });
+  }
+
+  function handleJumpToLookup(orderCode: string) {
+    setLastOrderCode(orderCode);
+    if (typeof document !== "undefined") {
+      const el = document.getElementById("order-lookup");
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   }
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -126,7 +187,10 @@ export function StorefrontClient({
       <div className="overflow-hidden border-b border-red-800/45 bg-[#0b0306] py-1.5 font-sans text-[11px] font-semibold tracking-[0.06em] text-zinc-300">
         <div className="animate-ticker">
           {[...TICKER_ITEMS, ...TICKER_ITEMS].map((text, idx) => (
-            <span key={`${text}-${idx}`} className="mx-5 inline-flex items-center gap-2.5 whitespace-nowrap">
+            <span
+              key={`${text}-${idx}`}
+              className="mx-5 inline-flex items-center gap-2.5 whitespace-nowrap"
+            >
               <span className="text-[10px] text-[#ff2e43]">◆</span>
               <span className={idx % 2 === 0 ? "text-amber-300" : "text-zinc-200"}>{text}</span>
             </span>
@@ -151,7 +215,9 @@ export function StorefrontClient({
             <div>
               <p className="flex items-center gap-2 text-xs font-bold tracking-[0.16em] text-[#ff4d5e] uppercase">
                 <span className="font-jp">夜の陳列棚</span>
-                <span className="font-mono">{"//"} Kệ Hàng Đêm ({filteredProducts.length} sản phẩm)</span>
+                <span className="font-mono">
+                  {"//"} Kệ Hàng Đêm ({filteredProducts.length} sản phẩm)
+                </span>
               </p>
               <h2 className="font-display mt-1.5 text-2xl font-bold tracking-tight text-[#f3ede8] sm:text-3xl">
                 Phụ Tùng &amp; Đèn Tăng Sáng Tuyển Chọn
@@ -173,12 +239,72 @@ export function StorefrontClient({
                     }`}
                   >
                     <span>{cat.label}</span>
-                    <span className="font-jp ml-1.5 text-[10px] opacity-85">
-                      {cat.jp}
-                    </span>
+                    <span className="font-jp ml-1.5 text-[10px] opacity-85">{cat.jp}</span>
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Advanced Technical Filter & Sort Strip */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-red-900/40 bg-[#0b0407]/90 px-4 py-3 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold text-amber-300">
+                <SlidersHorizontal className="h-3.5 w-3.5 text-[#ff4d5e]" />
+                Lọc nhanh:
+              </span>
+
+              <select
+                value={selectedKelvin}
+                onChange={(e) => setSelectedKelvin(e.target.value)}
+                aria-label="Lọc theo nhiệt màu Kelvin"
+                className="cursor-pointer border border-red-900/55 bg-[#12070b] px-2.5 py-1.5 text-xs text-zinc-200 focus:border-red-500 focus:outline-none"
+              >
+                {KELVIN_FILTERS.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.label}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={stockFilter}
+                onChange={(e) =>
+                  setStockFilter(e.target.value as "all" | "in_stock" | "jdm_preorder")
+                }
+                aria-label="Lọc theo tình trạng kho"
+                className="cursor-pointer border border-red-900/55 bg-[#12070b] px-2.5 py-1.5 text-xs text-zinc-200 focus:border-red-500 focus:outline-none"
+              >
+                <option value="all">Mọi Tình Trạng Kho</option>
+                <option value="in_stock">Sẵn Kho Giao Ngay</option>
+                <option value="jdm_preorder">Đặt Hàng Nhật</option>
+              </select>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <a
+                href="#builds"
+                className="inline-flex items-center gap-1.5 border border-amber-500/45 bg-amber-950/30 px-2.5 py-1 text-[11px] font-semibold text-amber-300 transition hover:border-amber-400"
+              >
+                <Sparkles className="h-3 w-3" />
+                <span>Xem Combo Xe Lên Đèn ↓</span>
+              </a>
+
+              <div className="flex items-center gap-1.5">
+                <ArrowUpDown className="h-3.5 w-3.5 text-zinc-400" />
+                <select
+                  value={sortBy}
+                  onChange={(e) =>
+                    setSortBy(e.target.value as "default" | "price_asc" | "price_desc")
+                  }
+                  aria-label="Sắp xếp theo giá"
+                  className="cursor-pointer border border-red-900/55 bg-[#12070b] px-2.5 py-1.5 text-xs text-zinc-200 focus:border-red-500 focus:outline-none"
+                >
+                  <option value="default">Mặc Định Tuyển Chọn</option>
+                  <option value="price_asc">Giá: Thấp → Cao</option>
+                  <option value="price_desc">Giá: Cao → Thấp</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -188,7 +314,7 @@ export function StorefrontClient({
                 Không có phụ tùng khớp bộ lọc hiện tại
               </p>
               <p className="mt-1 text-xs text-zinc-400">
-                Thử xóa bộ lọc hãng xe hoặc đổi từ khóa tìm kiếm.
+                Thử xóa bộ lọc hãng xe, nhiệt màu hoặc đổi từ khóa tìm kiếm.
               </p>
               <button
                 type="button"
@@ -196,6 +322,9 @@ export function StorefrontClient({
                   setSelectedCategory("all");
                   setSelectedMake("");
                   setSearchQuery("");
+                  setSelectedKelvin("all");
+                  setStockFilter("all");
+                  setSortBy("default");
                 }}
                 className="chamfer-sm mt-4 cursor-pointer border border-red-500 px-4 py-2 text-xs font-semibold text-red-300 hover:bg-red-950/60"
               >
@@ -209,8 +338,10 @@ export function StorefrontClient({
                   key={product.id}
                   product={product}
                   index={index}
+                  isCompared={compareIds.includes(product.id)}
                   onSelect={(p) => setActiveProduct(p)}
                   onQuickAdd={(p) => addToCart(p)}
+                  onToggleCompare={handleToggleCompare}
                 />
               ))}
             </div>
@@ -218,10 +349,24 @@ export function StorefrontClient({
         </section>
 
         <RainBeamSimulator />
-        <OrderLookup lastOrderCode={lastOrderCode} />
+
+        <VehicleBuildsShowcase
+          combos={initialCombos}
+          products={initialProducts}
+          onAddCombo={handleAddCombo}
+        />
+
+        <OrderLookup key={lastOrderCode ?? "init"} lastOrderCode={lastOrderCode} />
       </main>
 
       <Footer />
+
+      <CompareModal
+        selectedProducts={comparedProducts}
+        onRemove={(id) => setCompareIds((prev) => prev.filter((item) => item !== id))}
+        onClear={() => setCompareIds([])}
+        onQuickAdd={(p) => addToCart(p)}
+      />
 
       <ProductModal
         product={activeProduct}
@@ -233,10 +378,11 @@ export function StorefrontClient({
         open={cartOpen}
         items={cart}
         onClose={() => setCartOpen(false)}
-        onUpdateQty={updateQty}
-        onRemove={removeItem}
-        onClearCart={() => setCart([])}
+        onUpdateQty={updateStoredCartQty}
+        onRemove={removeStoredCartItem}
+        onClearCart={clearStoredCart}
         onOrderCreated={(order: OrderRecord) => setLastOrderCode(order.orderCode)}
+        onJumpToLookup={handleJumpToLookup}
       />
     </div>
   );

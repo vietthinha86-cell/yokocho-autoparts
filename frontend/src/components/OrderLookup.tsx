@@ -1,6 +1,14 @@
 "use client";
 
-import { PackageSearch, ShieldCheck, Wrench } from "lucide-react";
+import {
+  CheckCircle2,
+  ClipboardCheck,
+  Package,
+  PackageSearch,
+  ShieldCheck,
+  Truck,
+  Wrench,
+} from "lucide-react";
 import { useState } from "react";
 import { formatVnd, lookupOrder } from "@/lib/api";
 import type { OrderRecord } from "@/types/autoparts";
@@ -9,18 +17,48 @@ interface OrderLookupProps {
   lastOrderCode?: string;
 }
 
+const ORDER_STEPS: Array<{
+  key: OrderRecord["status"];
+  label: string;
+  sub: string;
+  Icon: typeof ClipboardCheck;
+}> = [
+  { key: "pending_confirm", label: "Xác nhận giắc", sub: "Kiểm chân đèn & OEM", Icon: ClipboardCheck },
+  { key: "packed", label: "Test & Đóng gói", sub: "Soi tia trước khi xuất", Icon: Package },
+  { key: "shipping", label: "Đang giao", sub: "Ship COD / Chuyển phát", Icon: Truck },
+  { key: "completed", label: "Hoàn tất", sub: "Kích hoạt BH điện tử", Icon: CheckCircle2 },
+];
+
+const STATUS_BADGE: Record<OrderRecord["status"], { label: string; cls: string }> = {
+  pending_confirm: {
+    label: "CHỜ XÁC NHẬN GIẮC",
+    cls: "border-amber-600/60 bg-amber-950/70 text-amber-300",
+  },
+  packed: {
+    label: "ĐÃ ĐÓNG GÓI",
+    cls: "border-sky-600/60 bg-sky-950/70 text-sky-300",
+  },
+  shipping: {
+    label: "ĐANG VẬN CHUYỂN",
+    cls: "border-red-500/60 bg-red-950/70 text-red-200",
+  },
+  completed: {
+    label: "HOÀN TẤT ĐƠN",
+    cls: "border-emerald-600/60 bg-emerald-950/70 text-emerald-300",
+  },
+};
+
 export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
   const [code, setCode] = useState(lastOrderCode ?? "");
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState<OrderRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!code.trim()) return;
+  async function performLookup(targetCode: string) {
+    if (!targetCode.trim()) return;
     setLoading(true);
     setError(null);
-    const res = await lookupOrder(code);
+    const res = await lookupOrder(targetCode);
     setLoading(false);
     if (!res.ok || !res.order) {
       setOrder(null);
@@ -28,6 +66,11 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
       return;
     }
     setOrder(res.order);
+  }
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    await performLookup(code);
   }
 
   return (
@@ -67,28 +110,113 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
             </button>
           </form>
 
+          {lastOrderCode && !order && (
+            <button
+              type="button"
+              onClick={() => {
+                setCode(lastOrderCode);
+                void performLookup(lastOrderCode);
+              }}
+              className="mt-2.5 inline-flex cursor-pointer items-center gap-2 border border-amber-500/45 bg-amber-950/35 px-3 py-1 font-mono text-[11px] font-semibold text-amber-300 transition hover:border-amber-400 hover:bg-amber-950/60"
+            >
+              <span>Tra nhanh đơn vừa đặt:</span>
+              <span className="font-bold text-white">{lastOrderCode}</span>
+            </button>
+          )}
+
           {error && (
             <p className="mt-3 border border-red-800/60 bg-red-950/50 px-3 py-2 text-xs text-red-200">
               {error}
             </p>
           )}
 
-          {order && (
-            <div className="mt-4 border border-emerald-800/50 bg-[#08110c] p-4 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-mono font-bold text-amber-300">{order.orderCode}</span>
-                <span className="border border-emerald-700/50 bg-emerald-950 px-2 py-0.5 font-mono text-[11px] text-emerald-300">
-                  {order.status}
-                </span>
+          {order && (() => {
+            const currentStepIdx = ORDER_STEPS.findIndex((s) => s.key === order.status);
+            const badge = STATUS_BADGE[order.status];
+            return (
+              <div className="mt-4 space-y-4 border border-emerald-800/50 bg-[#08110c] p-4 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="font-mono text-sm font-bold text-amber-300">
+                      {order.orderCode}
+                    </span>
+                    <p className="mt-0.5 text-[11px] text-zinc-400">
+                      {new Date(order.createdAt).toLocaleString("vi-VN")}
+                    </p>
+                  </div>
+                  <span className={`border px-2.5 py-0.5 font-mono text-[10px] font-bold ${badge.cls}`}>
+                    {badge.label}
+                  </span>
+                </div>
+
+                {/* 4-step fulfillment timeline */}
+                <div className="grid grid-cols-4 gap-1.5 border-y border-emerald-900/40 py-3">
+                  {ORDER_STEPS.map((step, idx) => {
+                    const reached = idx <= (currentStepIdx === -1 ? 0 : currentStepIdx);
+                    const StepIcon = step.Icon;
+                    return (
+                      <div key={step.key} className="flex flex-col items-center text-center">
+                        <div
+                          className={`flex h-7 w-7 items-center justify-center border ${
+                            reached
+                              ? "border-emerald-400 bg-emerald-500/20 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.28)]"
+                              : "border-zinc-800 bg-black/50 text-zinc-600"
+                          }`}
+                        >
+                          <StepIcon className="h-3.5 w-3.5" />
+                        </div>
+                        <span
+                          className={`mt-1.5 text-[10px] font-bold ${
+                            reached ? "text-emerald-200" : "text-zinc-500"
+                          }`}
+                        >
+                          {step.label}
+                        </span>
+                        <span className="hidden text-[9px] text-zinc-500 sm:block">{step.sub}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-1 text-zinc-300">
+                  <p>
+                    Khách hàng: <strong className="text-white">{order.customerName}</strong> ({order.phone})
+                  </p>
+                  <p>
+                    Dòng xe: <span className="text-amber-200">{order.vehicleInfo}</span>
+                  </p>
+                </div>
+
+                {/* Item breakdown */}
+                <div className="space-y-1.5 border border-emerald-900/40 bg-black/40 p-2.5">
+                  {order.items.map((item) => (
+                    <div
+                      key={`${item.productId}-${item.selectedKelvin ?? "std"}`}
+                      className="flex items-center justify-between gap-2 text-[11px]"
+                    >
+                      <span className="truncate text-zinc-200">
+                        {item.nameVi}{" "}
+                        {item.selectedKelvin ? `(${item.selectedKelvin})` : ""} × {item.quantity}
+                      </span>
+                      <span className="shrink-0 font-mono text-zinc-300">
+                        {formatVnd(item.lineTotalVnd)}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between border-t border-emerald-900/40 pt-1.5 text-[11px] text-zinc-400">
+                    <span>Phí giao hàng</span>
+                    <span className="font-mono text-emerald-300">
+                      {order.shippingFeeVnd === 0 ? "Miễn phí" : formatVnd(order.shippingFeeVnd)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between font-mono text-xs font-bold text-[#ff4d5e]">
+                    <span>Tổng thanh toán</span>
+                    <span>{formatVnd(order.totalVnd)}</span>
+                  </div>
+                </div>
               </div>
-              <p className="mt-2 text-zinc-300">
-                Khách: {order.customerName} • Xe: {order.vehicleInfo}
-              </p>
-              <p className="mt-1 font-mono font-bold text-[#ff4d5e]">
-                Tổng: {formatVnd(order.totalVnd)} ({order.items.length} sản phẩm)
-              </p>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* Customer Night Garage Support & Warranty Card */}
