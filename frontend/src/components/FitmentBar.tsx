@@ -79,11 +79,10 @@ export function FitmentBar({
           <button
             type="button"
             onClick={() => onSelectMake("")}
-            className={`chamfer-sm cursor-pointer border px-3.5 py-1.5 font-mono text-xs font-semibold tracking-wide uppercase transition ${
-              selectedMake === ""
+            className={`chamfer-sm cursor-pointer border px-3.5 py-1.5 font-mono text-xs font-semibold tracking-wide uppercase transition ${selectedMake === ""
                 ? "border-red-400 bg-[#e11d2e] text-white shadow-[0_0_18px_rgba(225,29,46,0.55)]"
                 : "border-red-900/50 bg-[#11070b] text-zinc-200 hover:border-red-500"
-            }`}
+              }`}
           >
             Tất Cả Dòng Xe
           </button>
@@ -94,11 +93,10 @@ export function FitmentBar({
                 key={fit.make}
                 type="button"
                 onClick={() => onSelectMake(active ? "" : fit.make)}
-                className={`chamfer-sm cursor-pointer border px-3.5 py-1.5 font-mono text-xs font-semibold tracking-wide uppercase transition ${
-                  active
+                className={`chamfer-sm cursor-pointer border px-3.5 py-1.5 font-mono text-xs font-semibold tracking-wide uppercase transition ${active
                     ? "border-red-400 bg-[#e11d2e] text-white shadow-[0_0_18px_rgba(225,29,46,0.55)]"
                     : "border-red-900/50 bg-[#11070b] text-zinc-200 hover:border-red-500"
-                }`}
+                  }`}
               >
                 {fit.make}
               </button>

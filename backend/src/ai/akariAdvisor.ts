@@ -6,6 +6,12 @@ import type {
 } from "../types.ts";
 
 export type DrivingProfile = "city" | "mountain_rain" | "highway" | "showcar";
+export type AiProviderId =
+  | "gemini"
+  | "openai-compatible"
+  | "ollama"
+  | "yokocho-local-ai";
+export type AiModePreference = "auto" | "gemini" | "openai" | "ollama" | "local";
 
 export interface AiAdviseInput {
   message?: string;
@@ -20,7 +26,7 @@ export interface AiAdviseInput {
 }
 
 export interface AiAdviseResult {
-  provider: "gemini" | "yokocho-local-ai";
+  provider: AiProviderId;
   model: string;
   replyVi: string;
   detectedVehicle?: string;
@@ -31,10 +37,12 @@ export interface AiAdviseResult {
   bundleDiscountPct: number;
   bundleTotalVnd: number;
   tipVi: string;
+  fallbackReason?: string;
 }
 
 export interface AiAdminDraftResult {
-  provider: "gemini" | "yokocho-local-ai";
+  provider: AiProviderId;
+  model?: string;
   skuSuggestion: string;
   nameJp: string;
   kanjiMark: string;
@@ -44,6 +52,27 @@ export interface AiAdminDraftResult {
   summaryVi: string;
   highlights: string[];
   specs: TechnicalSpec;
+}
+
+export interface AiEngineStatus {
+  modePreference: AiModePreference;
+  activeProvider: AiProviderId;
+  activeModel: string;
+  realAiReady: boolean;
+  visionCapable: boolean;
+  geminiConfigured: boolean;
+  openaiConfigured: boolean;
+  ollamaOnline: boolean;
+  ollamaModels: string[];
+  lastError?: string;
+}
+
+const rejectedKeyErrors = new Map<string, string>();
+let lastDiagnosticError: string | undefined;
+
+export function clearAiDiagnosticsCache(): void {
+  rejectedKeyErrors.clear();
+  lastDiagnosticError = undefined;
 }
 
 export function normalizeViText(input: string): string {
@@ -171,6 +200,22 @@ export function matchesSmartProductQuery(
   return false;
 }
 
+function extractJsonObject<T>(rawText: string): T | null {
+  const cleaned = rawText
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start === -1 || end <= start) return null;
+  try {
+    return JSON.parse(cleaned.slice(start, end + 1)) as T;
+  } catch {
+    return null;
+  }
+}
+
 function extractBudgetVnd(normalizedQuery: string): number | undefined {
   const m = normalizedQuery.match(/(\d+(?:[.,]\d+)?)\s*(tr|trieu|m)\b/);
   if (m) {
@@ -203,14 +248,45 @@ function computeBundleTotal(parts: AutoPartProduct[]): {
   return { discountPct, totalVnd };
 }
 
-async function tryGeminiAdvice(
-  input: AiAdviseInput,
-): Promise<AiAdviseResult | null> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) return null;
+function getModePreference(): AiModePreference {
+  const raw = process.env.AI_PROVIDER?.trim().toLowerCase();
+  if (
+    raw === "gemini" ||
+    raw === "openai" ||
+    raw === "ollama" ||
+    raw === "local" ||
+    raw === "auto"
+  ) {
+    return raw;
+  }
+  return "auto";
+}
 
-  const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+function buildAdvisorPrompt(input: AiAdviseInput, compactForLocal = false): string {
+  if (compactForLocal) {
+    const catalogLines = input.products
+      .map(
+        (p) =>
+          `- ${p.id}: ${p.nameVi} | ${(p.priceVnd / 1_000_000).toFixed(2)}tr | ${p.category} | ${(p.specs.kelvin ?? []).join("/")} | ${p.compatibleVehicles.join(",")}`,
+      )
+      .join("\n");
+
+    const qNorm = normalizeViText(`${input.message ?? ""} ${input.vehicleMake ?? ""}`);
+    const fitHint = inferMakeFromText(qNorm, input.fitments);
+    const fitLine = fitHint
+      ? `Fitment khớp: ${fitHint.make} (${fitHint.model}) -> chân ${fitHint.recommendedSockets.join(", ")}`
+      : "";
+
+    return [
+      "Bạn là kỹ sư trưởng đèn ô tô AKARI YOKOCHO. Tư vấn 2 câu tiếng Việt ngắn gọn, chọn 1-2 id có thật trong danh sách:",
+      catalogLines,
+      fitLine,
+      `Khách hỏi: "${input.message ?? ""}", xe="${input.vehicleMake ?? ""}", gu="${input.drivingProfile ?? "auto"}", nganSach=${input.budgetVnd ?? "tuỳ chọn"}, anh="${input.imageFilename ?? (input.imageBase64 ? "co_anh" : "khong")}".`,
+      'Trả về DUY NHẤT JSON: {"replyVi":"string","detectedVehicle":"string|null","detectedSocket":"string|null","recommendedKelvin":"3000K|4300K|6000K","recommendedBeamMode":"3000k|4300k|6000k|combo","recommendedProductIds":["id"],"tipVi":"string"}',
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
 
   const catalogCompact = input.products.map((p) => ({
     id: p.id,
@@ -223,17 +299,168 @@ async function tryGeminiAdvice(
     compatibleVehicles: p.compatibleVehicles,
   }));
 
-  const promptText = [
-    "Bạn là kỹ sư trưởng ánh sáng ô tô tại gara AKARI YOKOCHO (phong cách Nhật Bản).",
-    "Hãy tư vấn ngắn gọn, chuyên nghiệp bằng tiếng Việt (tối đa 4 câu), đề xuất tối đa 3 mã sản phẩm THẬT trong Catalog dưới đây.",
-    "Trả về DUY NHẤT JSON đúng schema:",
-    '{"replyVi":"string","detectedVehicle":"string|null","detectedSocket":"string|null","recommendedKelvin":"3000K|4300K|5500K|6000K","recommendedBeamMode":"3000k|4300k|6000k|combo","recommendedProductIds":["id"],"tipVi":"string"}',
+  return [
+    "Bạn là kỹ sư trưởng ánh sáng ô tô tại gara AKARI YOKOCHO (phong cách JDM Nhật Bản).",
+    "Hãy tư vấn ngắn gọn, tự nhiên, thực tế bằng tiếng Việt (2–4 câu), chọn 1 đến 3 id sản phẩm THẬT khớp nhất với nhu cầu, dòng xe và ngân sách từ Catalog.",
+    "Chỉ trả về DUY NHẤT 1 object JSON hợp lệ (không thêm chữ thừa ngoài JSON) đúng schema sau:",
+    '{"replyVi":"string","detectedVehicle":"string|null","detectedSocket":"string|null","recommendedKelvin":"string","recommendedBeamMode":"3000k|4300k|6000k|combo","recommendedProductIds":["id"],"tipVi":"string"}',
     `Catalog hiện có: ${JSON.stringify(catalogCompact)}`,
-    `Fitment các dòng xe: ${JSON.stringify(input.fitments)}`,
-    `Yêu cầu khách: message=${input.message ?? ""}, vehicleMake=${input.vehicleMake ?? ""}, drivingProfile=${input.drivingProfile ?? ""}, budgetVnd=${input.budgetVnd ?? "không giới hạn"}`,
+    `Fitment tham khảo: ${JSON.stringify(input.fitments)}`,
+    `Yêu cầu khách hàng: message="${input.message ?? ""}", vehicleMake="${input.vehicleMake ?? ""}", drivingProfile="${input.drivingProfile ?? ""}", budgetVnd=${input.budgetVnd ?? "linh hoạt"}, hasImage=${Boolean(input.imageBase64)}, imageFilename="${input.imageFilename ?? ""}".`,
   ].join("\n");
+}
 
-  const parts: Array<Record<string, unknown>> = [{ text: promptText }];
+function normalizeAiParsedAdvice(
+  parsed: {
+    replyVi?: string;
+    detectedVehicle?: string | null;
+    detectedSocket?: string | null;
+    recommendedKelvin?: string;
+    recommendedBeamMode?: string;
+    recommendedProductIds?: string[];
+    tipVi?: string;
+  },
+  provider: AiProviderId,
+  model: string,
+  input: AiAdviseInput,
+): AiAdviseResult {
+  const validProducts = (parsed.recommendedProductIds ?? [])
+    .map((id) => input.products.find((p) => p.id === id))
+    .filter((p): p is AutoPartProduct => Boolean(p))
+    .slice(0, 3);
+
+  const finalProducts =
+    validProducts.length > 0 ? validProducts : input.products.slice(0, 2);
+  const bundle = computeBundleTotal(finalProducts);
+
+  const validBeam =
+    parsed.recommendedBeamMode === "3000k" ||
+    parsed.recommendedBeamMode === "4300k" ||
+    parsed.recommendedBeamMode === "6000k" ||
+    parsed.recommendedBeamMode === "combo"
+      ? parsed.recommendedBeamMode
+      : "combo";
+
+  const qNorm = normalizeViText(`${input.message ?? ""} ${input.vehicleMake ?? ""}`);
+  const matchedFitment =
+    (input.vehicleMake
+      ? input.fitments.find(
+          (f) => normalizeViText(f.make) === normalizeViText(input.vehicleMake ?? ""),
+        )
+      : undefined) ?? inferMakeFromText(qNorm, input.fitments);
+
+  const canonicalVehicle = matchedFitment
+    ? `${matchedFitment.make} (${matchedFitment.model})`
+    : parsed.detectedVehicle || undefined;
+  const resolvedVehicle =
+    canonicalVehicle &&
+    parsed.detectedVehicle &&
+    !normalizeViText(parsed.detectedVehicle).includes(
+      normalizeViText(matchedFitment?.make ?? ""),
+    )
+      ? canonicalVehicle
+      : parsed.detectedVehicle || canonicalVehicle;
+
+  const resolvedSocket =
+    parsed.detectedSocket ||
+    (matchedFitment ? matchedFitment.recommendedSockets.join(" / ") : undefined);
+
+  return {
+    provider,
+    model,
+    replyVi:
+      parsed.replyVi?.trim() ||
+      "Mình đã ghép sẵn cấu hình đèn & phụ tùng chuẩn giắc cho xe bạn bên dưới:",
+    detectedVehicle: resolvedVehicle,
+    detectedSocket: resolvedSocket,
+    recommendedKelvin: parsed.recommendedKelvin?.trim() || "4300K / 3000K",
+    recommendedBeamMode: validBeam,
+    recommendedProducts: finalProducts,
+    bundleDiscountPct: bundle.discountPct,
+    bundleTotalVnd: bundle.totalVnd,
+    tipVi:
+      parsed.tipVi?.trim() ||
+      "Mẹo thợ đêm: Giữ nguyên giắc chuyển zin và căn mặt cắt Cos thấp hơn ngang vai xe đối diện.",
+  };
+}
+
+function isOllamaVisionModel(modelName: string): boolean {
+  return /(vl|vision|gemma3|llava|moondream|minicpm|qwen3-vl|qwen2\.5vl)/i.test(
+    modelName,
+  );
+}
+
+export async function listOllamaModels(): Promise<{
+  online: boolean;
+  models: string[];
+}> {
+  const baseUrl = (
+    process.env.OLLAMA_BASE_URL?.trim() || "http://127.0.0.1:11434"
+  ).replace(/\/+$/, "");
+
+  try {
+    const res = await fetch(`${baseUrl}/api/tags`, {
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!res.ok) return { online: false, models: [] };
+    const data = (await res.json()) as {
+      models?: Array<{ name?: string; model?: string }>;
+    };
+    const names = (data.models ?? [])
+      .map((m) => m.name || m.model || "")
+      .filter(Boolean);
+    return { online: true, models: names };
+  } catch {
+    return { online: false, models: [] };
+  }
+}
+
+function pickBestOllamaModel(
+  installed: string[],
+  needsVision: boolean,
+): string | undefined {
+  const envVision = process.env.OLLAMA_VISION_MODEL?.trim();
+  const envChat = process.env.OLLAMA_MODEL?.trim();
+
+  if (needsVision && envVision && installed.includes(envVision)) {
+    return envVision;
+  }
+  if (needsVision) {
+    const visionInstalled = installed.find((m) => isOllamaVisionModel(m));
+    if (visionInstalled) return visionInstalled;
+  }
+  if (envChat && installed.includes(envChat)) {
+    return envChat;
+  }
+  if (envChat && installed.length === 0) {
+    return envChat;
+  }
+  const preferredOrder = needsVision
+    ? ["qwen2.5vl:3b", "gemma3:4b", "llava", "moondream", "qwen2.5:3b"]
+    : ["qwen2.5:3b", "qwen2.5:1.5b", "llama3.2:3b", "gemma3:4b", "qwen2.5vl:3b"];
+  for (const cand of preferredOrder) {
+    const found = installed.find((m) => m.startsWith(cand));
+    if (found) return found;
+  }
+  return installed[0];
+}
+
+async function tryGeminiAdvice(
+  input: AiAdviseInput,
+): Promise<AiAdviseResult | null> {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) return null;
+  if (rejectedKeyErrors.has(`gemini:${apiKey}`)) {
+    lastDiagnosticError = rejectedKeyErrors.get(`gemini:${apiKey}`);
+    return null;
+  }
+
+  const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const parts: Array<Record<string, unknown>> = [
+    { text: buildAdvisorPrompt(input) },
+  ];
   if (input.imageBase64) {
     parts.push({
       inlineData: {
@@ -250,13 +477,23 @@ async function tryGeminiAdvice(
       body: JSON.stringify({
         contents: [{ role: "user", parts }],
         generationConfig: {
-          temperature: 0.4,
+          temperature: 0.35,
           responseMimeType: "application/json",
         },
       }),
+      signal: AbortSignal.timeout(18_000),
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      const summary = `Gemini HTTP ${res.status}: ${errBody.slice(0, 140)}`;
+      lastDiagnosticError = summary;
+      if (res.status === 401 || res.status === 403 || res.status === 400) {
+        rejectedKeyErrors.set(`gemini:${apiKey}`, summary);
+      }
+      return null;
+    }
+
     const data = (await res.json()) as {
       candidates?: Array<{
         content?: { parts?: Array<{ text?: string }> };
@@ -265,49 +502,194 @@ async function tryGeminiAdvice(
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!rawText) return null;
 
-    const parsed = JSON.parse(rawText) as {
-      replyVi?: string;
-      detectedVehicle?: string | null;
-      detectedSocket?: string | null;
-      recommendedKelvin?: string;
-      recommendedBeamMode?: "3000k" | "4300k" | "6000k" | "combo";
-      recommendedProductIds?: string[];
-      tipVi?: string;
+    const parsed = extractJsonObject<Record<string, unknown>>(rawText);
+    if (!parsed) return null;
+
+    lastDiagnosticError = undefined;
+    return normalizeAiParsedAdvice(parsed, "gemini", model, input);
+  } catch (err) {
+    lastDiagnosticError =
+      err instanceof Error ? `Gemini error: ${err.message}` : "Gemini error";
+    return null;
+  }
+}
+
+async function tryOpenAiCompatibleAdvice(
+  input: AiAdviseInput,
+): Promise<AiAdviseResult | null> {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) return null;
+  if (rejectedKeyErrors.has(`openai:${apiKey}`)) {
+    lastDiagnosticError = rejectedKeyErrors.get(`openai:${apiKey}`);
+    return null;
+  }
+
+  const baseUrl = (
+    process.env.OPENAI_BASE_URL?.trim() || "https://api.openai.com/v1"
+  ).replace(/\/+$/, "");
+  const model = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+
+  const userContent: Array<Record<string, unknown>> = [
+    { type: "text", text: buildAdvisorPrompt(input) },
+  ];
+  if (input.imageBase64) {
+    const cleanDataUrl = input.imageBase64.startsWith("data:")
+      ? input.imageBase64
+      : `data:${input.imageMimeType || "image/jpeg"};base64,${input.imageBase64}`;
+    userContent.push({
+      type: "image_url",
+      image_url: { url: cleanDataUrl },
+    });
+  }
+
+  try {
+    const res = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.35,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "Bạn là kỹ sư tư vấn phụ tùng đèn ô tô AKARI YOKOCHO. Luôn trả lời JSON hợp lệ.",
+          },
+          {
+            role: "user",
+            content: input.imageBase64 ? userContent : buildAdvisorPrompt(input),
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(18_000),
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      const summary = `OpenAI-Compatible HTTP ${res.status}: ${errBody.slice(0, 140)}`;
+      lastDiagnosticError = summary;
+      if (res.status === 401 || res.status === 403) {
+        rejectedKeyErrors.set(`openai:${apiKey}`, summary);
+      }
+      return null;
+    }
+
+    const data = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
     };
+    const rawText = data.choices?.[0]?.message?.content;
+    if (!rawText) return null;
 
-    const validProducts = (parsed.recommendedProductIds ?? [])
-      .map((id) => input.products.find((p) => p.id === id))
-      .filter((p): p is AutoPartProduct => Boolean(p))
-      .slice(0, 3);
+    const parsed = extractJsonObject<Record<string, unknown>>(rawText);
+    if (!parsed) return null;
 
-    const finalProducts =
-      validProducts.length > 0 ? validProducts : input.products.slice(0, 2);
-    const bundle = computeBundleTotal(finalProducts);
+    lastDiagnosticError = undefined;
+    return normalizeAiParsedAdvice(parsed, "openai-compatible", model, input);
+  } catch (err) {
+    lastDiagnosticError =
+      err instanceof Error ? `OpenAI error: ${err.message}` : "OpenAI error";
+    return null;
+  }
+}
 
-    return {
-      provider: "gemini",
-      model,
-      replyVi: parsed.replyVi || "Mình đã chọn sẵn cấu hình tối ưu cho xe của bạn bên dưới:",
-      detectedVehicle: parsed.detectedVehicle ?? undefined,
-      detectedSocket: parsed.detectedSocket ?? undefined,
-      recommendedKelvin: parsed.recommendedKelvin || "4300K / 3000K",
-      recommendedBeamMode: parsed.recommendedBeamMode || "combo",
-      recommendedProducts: finalProducts,
-      bundleDiscountPct: bundle.discountPct,
-      bundleTotalVnd: bundle.totalVnd,
-      tipVi:
-        parsed.tipVi ||
-        "Lắp giữ nguyên giắc zin và căn lại chiều cao tim đèn trên bảng canh 10m.",
+async function tryOllamaAdvice(
+  input: AiAdviseInput,
+): Promise<AiAdviseResult | null> {
+  const { online, models } = await listOllamaModels();
+  if (!online || models.length === 0) {
+    return null;
+  }
+
+  const baseUrl = (
+    process.env.OLLAMA_BASE_URL?.trim() || "http://127.0.0.1:11434"
+  ).replace(/\/+$/, "");
+
+  const hasImage = Boolean(input.imageBase64);
+  const selectedModel = pickBestOllamaModel(models, hasImage);
+  if (!selectedModel) return null;
+
+  const supportsVision = isOllamaVisionModel(selectedModel);
+  const userMessage: Record<string, unknown> = {
+    role: "user",
+    content: buildAdvisorPrompt(input, true),
+  };
+
+  if (hasImage && supportsVision && input.imageBase64) {
+    userMessage.images = [
+      input.imageBase64.replace(/^data:[^;]+;base64,/, ""),
+    ];
+  }
+
+  try {
+    const res = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: selectedModel,
+        stream: false,
+        format: "json",
+        keep_alive: "30m",
+        options: {
+          temperature: 0.25,
+          num_ctx: hasImage ? 4096 : 2048,
+          num_predict: 240,
+        },
+        messages: [userMessage],
+      }),
+      signal: AbortSignal.timeout(hasImage ? 120_000 : 60_000),
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      lastDiagnosticError = `Ollama HTTP ${res.status}: ${errBody.slice(0, 140)}`;
+      return null;
+    }
+
+    const data = (await res.json()) as {
+      message?: { content?: string };
     };
-  } catch {
+    const rawText = data.message?.content;
+    if (!rawText) return null;
+
+    const parsed = extractJsonObject<Record<string, unknown>>(rawText);
+    if (!parsed) return null;
+
+    lastDiagnosticError = undefined;
+    return normalizeAiParsedAdvice(parsed, "ollama", selectedModel, input);
+  } catch (err) {
+    lastDiagnosticError =
+      err instanceof Error ? `Ollama error: ${err.message}` : "Ollama error";
     return null;
   }
 }
 
 export async function adviseGarageAi(input: AiAdviseInput): Promise<AiAdviseResult> {
-  const geminiResult = await tryGeminiAdvice(input);
-  if (geminiResult) {
-    return geminiResult;
+  const pref = getModePreference();
+
+  if (pref !== "local") {
+    const chain: Array<() => Promise<AiAdviseResult | null>> =
+      pref === "gemini"
+        ? [() => tryGeminiAdvice(input), () => tryOllamaAdvice(input)]
+        : pref === "openai"
+          ? [() => tryOpenAiCompatibleAdvice(input), () => tryOllamaAdvice(input)]
+          : pref === "ollama"
+            ? [() => tryOllamaAdvice(input)]
+            : [
+                () => tryGeminiAdvice(input),
+                () => tryOpenAiCompatibleAdvice(input),
+                () => tryOllamaAdvice(input),
+              ];
+
+    for (const runner of chain) {
+      const result = await runner();
+      if (result) {
+        return result;
+      }
+    }
   }
 
   const rawMsg = input.message?.trim() ?? "";
@@ -370,7 +752,6 @@ export async function adviseGarageAi(input: AiAdviseInput): Promise<AiAdviseResu
     pushIfFound((p) => p.category === "bi-fog");
   }
 
-  // Enforce budget cap gently when user set budget
   let finalParts = selected;
   if (budgetVnd && finalParts.length > 1) {
     const withinBudget = finalParts.filter((p) => p.priceVnd <= budgetVnd);
@@ -420,10 +801,6 @@ export async function adviseGarageAi(input: AiAdviseInput): Promise<AiAdviseResu
       ? "Chân H4 (Chóa phản xạ zin)"
       : "Bi Projector / H11 Plug & Play";
 
-  const visionNote = input.imageBase64
-    ? "Ảnh bạn gửi đã được phân tích kiểu chóa đèn ở chế độ nội bộ (gắn GEMINI_API_KEY vào backend/.env để bật nhận diện Gemini Vision theo đời xe chính xác hơn). "
-    : "";
-
   const replyParts: string[] = [];
   if (vehicleLabel) {
     replyParts.push(
@@ -443,7 +820,7 @@ export async function adviseGarageAi(input: AiAdviseInput): Promise<AiAdviseResu
   return {
     provider: "yokocho-local-ai",
     model: "akari-night-advisor-v1",
-    replyVi: `${visionNote}${replyParts.join(" ")}`,
+    replyVi: replyParts.join(" "),
     detectedVehicle: vehicleLabel,
     detectedSocket: socketLabel,
     recommendedKelvin: kelvinLabel,
@@ -453,6 +830,7 @@ export async function adviseGarageAi(input: AiAdviseInput): Promise<AiAdviseResu
     bundleTotalVnd: bundle.totalVnd,
     tipVi:
       "Mẹo thợ đêm: Chỉnh đường cắt Cos thấp hơn ngang vai xe máy đối diện và giữ nguyên giắc chuyển zin để qua đăng kiểm mượt.",
+    fallbackReason: lastDiagnosticError,
   };
 }
 
@@ -462,41 +840,133 @@ export async function generateAdminProductDraft(input: {
   wattage?: string;
   priceVnd?: number;
 }): Promise<AiAdminDraftResult> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+  const pref = getModePreference();
+  const draftPrompt = [
+    "Tạo dữ liệu sản phẩm phụ tùng ô tô JDM bằng tiếng Việt + phụ đề tiếng Nhật ngắn cho shop AKARI YOKOCHO.",
+    `Tên SP: ${input.nameVi}, Danh mục: ${input.category ?? "bi-led"}, Công suất: ${input.wattage ?? "65W"}, Giá: ${input.priceVnd ?? 3000000}.`,
+    'Chỉ trả về JSON: {"skuSuggestion":"YKC-...","nameJp":"string","kanjiMark":"1 kanji","oemRef":"string","badgeText":"uppercase short","compatibleVehicles":["Toyota","Honda"],"summaryVi":"2 câu tiếng Việt","highlights":["3 ý ngắn"],"specs":{"wattage":"string","kelvin":["4300K","6000K"],"socket":"string","lumens":"string","warrantyMonths":24,"origin":"string"}}',
+  ].join("\n");
 
-  if (apiKey) {
+  const geminiKey = process.env.GEMINI_API_KEY?.trim();
+  const geminiModel = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+  if (
+    pref !== "local" &&
+    pref !== "ollama" &&
+    pref !== "openai" &&
+    geminiKey &&
+    !rejectedKeyErrors.has(`gemini:${geminiKey}`)
+  ) {
     try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-      const prompt = [
-        "Tạo dữ liệu sản phẩm phụ tùng ô tô JDM bằng tiếng Việt + phụ đề tiếng Nhật ngắn cho shop AKARI YOKOCHO.",
-        `Tên SP: ${input.nameVi}, Danh mục: ${input.category ?? "bi-led"}, Công suất: ${input.wattage ?? "65W"}, Giá: ${input.priceVnd ?? 3000000}.`,
-        'Trả về JSON: {"skuSuggestion":"YKC-...","nameJp":"string","kanjiMark":"1 kanji","oemRef":"string","badgeText":"uppercase short","compatibleVehicles":["Toyota",...],"summaryVi":"2 sentences","highlights":["3 bullets"],"specs":{"wattage":"string","kelvin":["4300K","6000K"],"socket":"string","lumens":"string","warrantyMonths":24,"origin":"string"}}',
-      ].join("\n");
-
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${encodeURIComponent(geminiKey)}`;
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          contents: [{ role: "user", parts: [{ text: draftPrompt }] }],
           generationConfig: {
-            temperature: 0.5,
+            temperature: 0.45,
             responseMimeType: "application/json",
           },
         }),
+        signal: AbortSignal.timeout(18_000),
       });
       if (res.ok) {
         const data = (await res.json()) as {
           candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
         };
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          const parsed = JSON.parse(text) as Omit<AiAdminDraftResult, "provider">;
-          return { provider: "gemini", ...parsed };
+        const parsed = text
+          ? extractJsonObject<Omit<AiAdminDraftResult, "provider" | "model">>(text)
+          : null;
+        if (parsed) {
+          return { provider: "gemini", model: geminiModel, ...parsed };
+        }
+      } else if (res.status === 401 || res.status === 403) {
+        rejectedKeyErrors.set(`gemini:${geminiKey}`, `Gemini HTTP ${res.status}`);
+      }
+    } catch {
+      // Fallback cleanly
+    }
+  }
+
+  const openaiKey = process.env.OPENAI_API_KEY?.trim();
+  const openaiBase = (
+    process.env.OPENAI_BASE_URL?.trim() || "https://api.openai.com/v1"
+  ).replace(/\/+$/, "");
+  const openaiModel = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+  if (
+    pref !== "local" &&
+    pref !== "ollama" &&
+    pref !== "gemini" &&
+    openaiKey &&
+    !rejectedKeyErrors.has(`openai:${openaiKey}`)
+  ) {
+    try {
+      const res = await fetch(`${openaiBase}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${openaiKey}`,
+        },
+        body: JSON.stringify({
+          model: openaiModel,
+          temperature: 0.45,
+          response_format: { type: "json_object" },
+          messages: [{ role: "user", content: draftPrompt }],
+        }),
+        signal: AbortSignal.timeout(18_000),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+        const text = data.choices?.[0]?.message?.content;
+        const parsed = text
+          ? extractJsonObject<Omit<AiAdminDraftResult, "provider" | "model">>(text)
+          : null;
+        if (parsed) {
+          return { provider: "openai-compatible", model: openaiModel, ...parsed };
         }
       }
     } catch {
-      // Fall back to deterministic generator seamlessly
+      // Fallback cleanly
+    }
+  }
+
+  if (pref === "auto" || pref === "ollama") {
+    const { online, models } = await listOllamaModels();
+    const ollamaModel = pickBestOllamaModel(models, false);
+    if (online && ollamaModel) {
+      const ollamaBase = (
+        process.env.OLLAMA_BASE_URL?.trim() || "http://127.0.0.1:11434"
+      ).replace(/\/+$/, "");
+      try {
+        const res = await fetch(`${ollamaBase}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: ollamaModel,
+            stream: false,
+            format: "json",
+            keep_alive: "30m",
+            options: { temperature: 0.3, num_ctx: 1536, num_predict: 260 },
+            messages: [{ role: "user", content: draftPrompt }],
+          }),
+          signal: AbortSignal.timeout(60_000),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { message?: { content?: string } };
+          const text = data.message?.content;
+          const parsed = text
+            ? extractJsonObject<Omit<AiAdminDraftResult, "provider" | "model">>(text)
+            : null;
+          if (parsed && parsed.skuSuggestion && parsed.nameJp) {
+            return { provider: "ollama", model: ollamaModel, ...parsed };
+          }
+        }
+      } catch {
+        // Fallback cleanly
+      }
     }
   }
 
@@ -553,6 +1023,7 @@ export async function generateAdminProductDraft(input: {
   const preset = presetMap[cat];
   return {
     provider: "yokocho-local-ai",
+    model: "akari-copywriter-v1",
     skuSuggestion: `YKC-${codeTail || "PRO"}-${String(Math.floor(10 + Math.random() * 89))}`,
     nameJp: preset.jp,
     kanjiMark: preset.kanji,
@@ -576,3 +1047,223 @@ export async function generateAdminProductDraft(input: {
   };
 }
 
+export async function getAiEngineStatus(): Promise<AiEngineStatus> {
+  const modePreference = getModePreference();
+  const geminiKey = process.env.GEMINI_API_KEY?.trim() ?? "";
+  const openaiKey = process.env.OPENAI_API_KEY?.trim() ?? "";
+  const geminiRejected = geminiKey
+    ? rejectedKeyErrors.get(`gemini:${geminiKey}`)
+    : undefined;
+  const openaiRejected = openaiKey
+    ? rejectedKeyErrors.get(`openai:${openaiKey}`)
+    : undefined;
+
+  const geminiConfigured = Boolean(geminiKey) && !geminiRejected;
+  const openaiConfigured = Boolean(openaiKey) && !openaiRejected;
+  const { online: ollamaOnline, models: ollamaModels } = await listOllamaModels();
+  const bestOllamaModel = pickBestOllamaModel(ollamaModels, false);
+
+  let activeProvider: AiProviderId = "yokocho-local-ai";
+  let activeModel = "akari-night-advisor-v1";
+
+  if (modePreference === "gemini" && geminiConfigured) {
+    activeProvider = "gemini";
+    activeModel = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+  } else if (modePreference === "openai" && openaiConfigured) {
+    activeProvider = "openai-compatible";
+    activeModel = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+  } else if (modePreference === "ollama" && ollamaOnline && bestOllamaModel) {
+    activeProvider = "ollama";
+    activeModel = bestOllamaModel;
+  } else if (modePreference === "auto") {
+    if (geminiConfigured) {
+      activeProvider = "gemini";
+      activeModel = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+    } else if (openaiConfigured) {
+      activeProvider = "openai-compatible";
+      activeModel = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+    } else if (ollamaOnline && bestOllamaModel) {
+      activeProvider = "ollama";
+      activeModel = bestOllamaModel;
+    }
+  }
+
+  const visionCapable =
+    activeProvider === "gemini" ||
+    activeProvider === "openai-compatible" ||
+    (activeProvider === "ollama" &&
+      ollamaModels.some((m) => isOllamaVisionModel(m)));
+
+  return {
+    modePreference,
+    activeProvider,
+    activeModel,
+    realAiReady: activeProvider !== "yokocho-local-ai",
+    visionCapable,
+    geminiConfigured,
+    openaiConfigured,
+    ollamaOnline,
+    ollamaModels,
+    lastError: geminiRejected || openaiRejected || lastDiagnosticError,
+  };
+}
+
+export async function testLiveAiConnection(): Promise<{
+  ok: boolean;
+  provider: AiProviderId;
+  model: string;
+  latencyMs: number;
+  reply?: string;
+  error?: string;
+}> {
+  const started = Date.now();
+  clearAiDiagnosticsCache();
+  const pref = getModePreference();
+
+  const tryGeminiPing = async () => {
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) return null;
+    const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: "Trả lời ngắn gọn: AKARI AI SAN SANG" }] }],
+      }),
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      const err = `Gemini HTTP ${res.status}: ${txt.slice(0, 180)}`;
+      lastDiagnosticError = err;
+      if (res.status === 401 || res.status === 403 || res.status === 400) {
+        rejectedKeyErrors.set(`gemini:${apiKey}`, err);
+      }
+      return { ok: false as const, provider: "gemini" as const, model, error: err };
+    }
+    const data = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "OK";
+    lastDiagnosticError = undefined;
+    return { ok: true as const, provider: "gemini" as const, model, reply };
+  };
+
+  const tryOpenAiPing = async () => {
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!apiKey) return null;
+    const baseUrl = (
+      process.env.OPENAI_BASE_URL?.trim() || "https://api.openai.com/v1"
+    ).replace(/\/+$/, "");
+    const model = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+    const res = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 32,
+        messages: [{ role: "user", content: "Say OK AKARI" }],
+      }),
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      const err = `OpenAI-Compatible HTTP ${res.status}: ${txt.slice(0, 180)}`;
+      lastDiagnosticError = err;
+      if (res.status === 401 || res.status === 403) {
+        rejectedKeyErrors.set(`openai:${apiKey}`, err);
+      }
+      return {
+        ok: false as const,
+        provider: "openai-compatible" as const,
+        model,
+        error: err,
+      };
+    }
+    const data = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    const reply = data.choices?.[0]?.message?.content?.trim() || "OK";
+    lastDiagnosticError = undefined;
+    return {
+      ok: true as const,
+      provider: "openai-compatible" as const,
+      model,
+      reply,
+    };
+  };
+
+  const tryOllamaPing = async () => {
+    const { online, models } = await listOllamaModels();
+    const model = pickBestOllamaModel(models, false) || "none";
+    if (!online || models.length === 0) {
+      return null;
+    }
+    const baseUrl = (
+      process.env.OLLAMA_BASE_URL?.trim() || "http://127.0.0.1:11434"
+    ).replace(/\/+$/, "");
+    const res = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        stream: false,
+        keep_alive: "30m",
+        options: { num_ctx: 1024, num_predict: 20 },
+        messages: [{ role: "user", content: "Reply: AKARI OK" }],
+      }),
+      signal: AbortSignal.timeout(45_000),
+    });
+    if (!res.ok) {
+      const err = `Ollama HTTP ${res.status}`;
+      return { ok: false as const, provider: "ollama" as const, model, error: err };
+    }
+    const data = (await res.json()) as { message?: { content?: string } };
+    return {
+      ok: true as const,
+      provider: "ollama" as const,
+      model,
+      reply: data.message?.content?.trim() || "AKARI OK",
+    };
+  };
+
+  let lastFail:
+    | { ok: false; provider: AiProviderId; model: string; error: string }
+    | null = null;
+
+  const attempts =
+    pref === "gemini"
+      ? [tryGeminiPing]
+      : pref === "openai"
+        ? [tryOpenAiPing]
+        : pref === "ollama"
+          ? [tryOllamaPing]
+          : pref === "local"
+            ? []
+            : [tryGeminiPing, tryOpenAiPing, tryOllamaPing];
+
+  for (const fn of attempts) {
+    const out = await fn();
+    if (!out) continue;
+    if (out.ok) {
+      return { ...out, latencyMs: Date.now() - started };
+    }
+    lastFail = out;
+  }
+
+  return (
+    lastFail ? { ...lastFail, latencyMs: Date.now() - started } : {
+      ok: false,
+      provider: "yokocho-local-ai",
+      model: "akari-night-advisor-v1",
+      latencyMs: Date.now() - started,
+      error:
+        lastDiagnosticError ||
+        "Chưa có key Gemini/OpenAI hợp lệ hoặc model Ollama đang chạy.",
+    }
+  );
+}

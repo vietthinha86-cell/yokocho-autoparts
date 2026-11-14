@@ -1,5 +1,6 @@
 import type {
   AiAdviceResponse,
+  AiEngineStatus,
   AutoPartProduct,
   DrivingProfile,
   OrderRecord,
@@ -515,5 +516,16 @@ export async function requestAiAdvice(
     return data.item;
   } catch {
     return buildOfflineAiFallback(fallbackProducts, fallbackFitments, payload);
+  }
+}
+
+export async function fetchAiEngineStatus(): Promise<AiEngineStatus | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/ai/status`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { item?: AiEngineStatus };
+    return data.item ?? null;
+  } catch {
+    return null;
   }
 }

@@ -54,7 +54,7 @@ Dự án được chia thành **4 Phase** rõ ràng để bạn có thể phát 
 ### Frontend
 - [x] Hiển thị mã VietQR động ngay màn hình đặt hàng thành công
 - [x] Trang "Xe Đã Lên Đèn" (Gallery cấu hình combo thực tế cho Civic, Bán tải Custom, Mazda 3...)
-- [x] Chatbot `AI Thợ Đêm` (Gemini Vision + Local Fallback) tư vấn chân bóng theo đời xe, cung đường, ngân sách & ảnh chóa đèn (`AkariAiDrawer` + `POST /api/ai/advise`)
+- [x] Chatbot `AI Thợ Đêm` Multi-Provider AI Thực Tế (Gemini Vision / OpenAI-Groq-OpenRouter / Local Ollama `qwen2.5:3b` + `qwen2.5vl:3b` + Fallback) kèm Tab cấu hình & test AI trong `/admin` (`AkariAiDrawer`, `/api/ai/status`, `/api/admin/ai-config`)
 - [ ] Tối ưu Core Web Vitals, `next/image` tối ưu dung lượng, sitemap & OpenGraph SEO
 
 ---

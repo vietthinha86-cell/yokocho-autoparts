@@ -6,8 +6,10 @@ import {
   Activity,
   ArrowLeft,
   BellRing,
+  Bot,
   Box,
   ClipboardList,
+  Cpu,
   Database,
   LogOut,
   Plus,
@@ -23,23 +25,29 @@ import {
   clearStoredAdminToken,
   createAdminProduct,
   deleteAdminProduct,
+  fetchAdminAiConfig,
   fetchAdminSession,
   getStoredAdminToken,
   requestAdminAiDraft,
+  saveAdminAiConfig,
   signAdminMediaUpload,
+  testAdminAiConnection,
   updateAdminOrderStatus,
   updateAdminProduct,
 } from "@/lib/adminApi";
 import type {
+  AdminAiConfigResponse,
   AdminOverviewResponse,
   AdminProfile,
+  AiModePreference,
+  AiProviderId,
   AutoPartProduct,
   OrderRecord,
   PartCategory,
   StockStatus,
 } from "@/types/autoparts";
 
-type AdminTab = "orders" | "inventory" | "create" | "logs";
+type AdminTab = "orders" | "inventory" | "create" | "logs" | "ai";
 
 const ORDER_STATUS_LABELS: Array<{ value: OrderRecord["status"]; label: string }> = [
   { value: "pending_confirm", label: "Chờ xác nhận giắc" },
@@ -88,14 +96,50 @@ export function AdminDashboardClient() {
   const [mediaFileName, setMediaFileName] = useState("new-biled-lens.webp");
   const [mediaSignResult, setMediaSignResult] = useState<string | null>(null);
 
+  // Real AI Engine Configuration state
+  const [aiConfig, setAiConfig] = useState<AdminAiConfigResponse | null>(null);
+  const [aiProviderMode, setAiProviderMode] = useState<AiModePreference>("auto");
+  const [aiGeminiKeyInput, setAiGeminiKeyInput] = useState("");
+  const [aiGeminiModelInput, setAiGeminiModelInput] = useState("gemini-2.5-flash");
+  const [aiOpenaiKeyInput, setAiOpenaiKeyInput] = useState("");
+  const [aiOpenaiBaseUrlInput, setAiOpenaiBaseUrlInput] = useState("https://api.openai.com/v1");
+  const [aiOpenaiModelInput, setAiOpenaiModelInput] = useState("gpt-4o-mini");
+  const [aiOllamaUrlInput, setAiOllamaUrlInput] = useState("http://127.0.0.1:11434");
+  const [aiOllamaModelInput, setAiOllamaModelInput] = useState("");
+  const [aiOllamaVisionModelInput, setAiOllamaVisionModelInput] = useState("");
+  const [aiSavingConfig, setAiSavingConfig] = useState(false);
+  const [aiTesting, setAiTesting] = useState(false);
+  const [aiTestResult, setAiTestResult] = useState<{
+    ok: boolean;
+    provider?: AiProviderId;
+    model?: string;
+    latencyMs?: number;
+    reply?: string;
+    error?: string;
+  } | null>(null);
+
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     window.setTimeout(() => setToast(null), 3200);
   }, []);
 
+  const applyAiConfigState = useCallback((cfg: AdminAiConfigResponse) => {
+    setAiConfig(cfg);
+    setAiProviderMode(cfg.modePreference);
+    setAiGeminiModelInput(cfg.geminiModel);
+    setAiOpenaiBaseUrlInput(cfg.openaiBaseUrl);
+    setAiOpenaiModelInput(cfg.openaiModel);
+    setAiOllamaUrlInput(cfg.ollamaBaseUrl);
+    setAiOllamaModelInput(cfg.ollamaModel);
+    setAiOllamaVisionModelInput(cfg.ollamaVisionModel);
+  }, []);
+
   const refreshData = useCallback(
     async (activeToken: string) => {
-      const res = await fetchAdminSession(activeToken);
+      const [res, aiRes] = await Promise.all([
+        fetchAdminSession(activeToken),
+        fetchAdminAiConfig(activeToken),
+      ]);
       if (res.unauthorized) {
         clearStoredAdminToken();
         router.replace("/admin/login");
@@ -108,9 +152,12 @@ export function AdminDashboardClient() {
         setProducts(res.products);
         setOrders(res.orders);
       }
+      if (aiRes.ok && aiRes.item) {
+        applyAiConfigState(aiRes.item);
+      }
       setLoading(false);
     },
-    [router],
+    [applyAiConfigState, router],
   );
 
   useEffect(() => {
@@ -120,26 +167,76 @@ export function AdminDashboardClient() {
       return;
     }
     let cancelled = false;
-    fetchAdminSession(stored).then((res) => {
-      if (cancelled) return;
-      if (res.unauthorized || !res.ok) {
-        clearStoredAdminToken();
-        router.replace("/admin/login");
-        return;
-      }
-      if (res.admin && res.overview && res.products && res.orders) {
-        setToken(stored);
-        setAdmin(res.admin);
-        setOverview(res.overview);
-        setProducts(res.products);
-        setOrders(res.orders);
-      }
-      setLoading(false);
-    });
+    Promise.all([fetchAdminSession(stored), fetchAdminAiConfig(stored)]).then(
+      ([res, aiRes]) => {
+        if (cancelled) return;
+        if (res.unauthorized || !res.ok) {
+          clearStoredAdminToken();
+          router.replace("/admin/login");
+          return;
+        }
+        if (res.admin && res.overview && res.products && res.orders) {
+          setToken(stored);
+          setAdmin(res.admin);
+          setOverview(res.overview);
+          setProducts(res.products);
+          setOrders(res.orders);
+        }
+        if (aiRes.ok && aiRes.item) {
+          applyAiConfigState(aiRes.item);
+        }
+        setLoading(false);
+      },
+    );
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [applyAiConfigState, router]);
+
+  async function handleSaveAiSettings(e: React.FormEvent, clearKey?: "gemini" | "openai") {
+    e.preventDefault();
+    if (!token) return;
+    setAiSavingConfig(true);
+    const res = await saveAdminAiConfig(token, {
+      aiProvider: aiProviderMode,
+      geminiApiKey: aiGeminiKeyInput.trim() || undefined,
+      clearGeminiKey: clearKey === "gemini",
+      geminiModel: aiGeminiModelInput.trim() || "gemini-2.5-flash",
+      openaiApiKey: aiOpenaiKeyInput.trim() || undefined,
+      clearOpenaiKey: clearKey === "openai",
+      openaiBaseUrl: aiOpenaiBaseUrlInput.trim() || undefined,
+      openaiModel: aiOpenaiModelInput.trim() || undefined,
+      ollamaBaseUrl: aiOllamaUrlInput.trim() || undefined,
+      ollamaModel: aiOllamaModelInput.trim(),
+      ollamaVisionModel: aiOllamaVisionModelInput.trim(),
+    });
+    setAiSavingConfig(false);
+    if (!res.ok || !res.item) {
+      showToast(res.error ?? "Không lưu được cấu hình AI.");
+      return;
+    }
+    applyAiConfigState(res.item);
+    setAiGeminiKeyInput("");
+    setAiOpenaiKeyInput("");
+    showToast("Đã lưu cấu hình AI vào backend/.env và kích hoạt ngay!");
+  }
+
+  async function handleTestAiNow() {
+    if (!token) return;
+    setAiTesting(true);
+    const result = await testAdminAiConnection(token);
+    setAiTesting(false);
+    setAiTestResult(result);
+    const cfgRes = await fetchAdminAiConfig(token);
+    if (cfgRes.ok && cfgRes.item) {
+      applyAiConfigState(cfgRes.item);
+    }
+    showToast(
+      result.ok
+        ? `AI thật phản hồi thành công (${result.provider} • ${result.latencyMs}ms)!`
+        : "Kết nối AI chưa thành công — kiểm tra chi tiết bên dưới.",
+    );
+  }
 
   async function handleOrderStatusChange(orderCode: string, nextStatus: OrderRecord["status"]) {
     if (!token) return;
@@ -444,6 +541,21 @@ export function AdminDashboardClient() {
           >
             <Activity className="h-3.5 w-3.5" />
             <span>Nhật Ký Kho &amp; Webhook</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("ai")}
+            className={`chamfer-sm inline-flex cursor-pointer items-center gap-1.5 border px-4 py-2 transition ${
+              activeTab === "ai"
+                ? "border-amber-400 bg-gradient-to-r from-[#b45309] to-[#e11d2e] text-white"
+                : "border-amber-700/50 bg-[#12070b] text-amber-200 hover:border-amber-400"
+            }`}
+          >
+            <Bot className="h-3.5 w-3.5" />
+            <span>
+              AI Thực Tế ({aiConfig?.realAiReady ? aiConfig.activeProvider.toUpperCase() : "FALLBACK"})
+            </span>
           </button>
         </div>
 
@@ -874,6 +986,218 @@ export function AdminDashboardClient() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Tab 5: Live Real AI Provider Configuration */}
+        {activeTab === "ai" && (
+          <div className="mt-6 grid gap-6 lg:grid-cols-12">
+            <div className="yokocho-panel chamfer-md space-y-4 p-6 text-xs lg:col-span-5">
+              <div className="flex items-center justify-between">
+                <h2 className="flex items-center gap-2 font-display text-base font-bold text-white">
+                  <Cpu className="h-4 w-4 text-amber-300" />
+                  <span>Trạng Thái AI Engine Thực Tế</span>
+                </h2>
+                <span
+                  className={`border px-2 py-0.5 font-mono text-[10px] font-bold ${
+                    aiConfig?.realAiReady
+                      ? "border-emerald-600/70 bg-emerald-950/60 text-emerald-300"
+                      : "border-amber-600/70 bg-amber-950/50 text-amber-300"
+                  }`}
+                >
+                  {aiConfig?.realAiReady ? "REAL AI ACTIVE" : "FALLBACK LOCAL"}
+                </span>
+              </div>
+
+              <div className="space-y-2 border border-red-900/40 bg-[#080305] p-3.5 font-mono text-[11px]">
+                <p className="text-zinc-300">
+                  Provider hiện tại:{" "}
+                  <strong className="text-amber-300">{aiConfig?.activeProvider ?? "..."}</strong>
+                </p>
+                <p className="text-zinc-300">
+                  Model đang chạy:{" "}
+                  <strong className="text-white">{aiConfig?.activeModel ?? "..."}</strong>
+                </p>
+                <p className="text-zinc-300">
+                  Soi ảnh chóa đèn (Vision):{" "}
+                  <strong className={aiConfig?.visionCapable ? "text-emerald-300" : "text-zinc-400"}>
+                    {aiConfig?.visionCapable ? "HỖ TRỢ ẢNH TRỰC TIẾP" : "Chỉ nhận text/filename"}
+                  </strong>
+                </p>
+                <p className="text-zinc-300">
+                  Ollama trên máy:{" "}
+                  <strong className={aiConfig?.ollamaOnline ? "text-emerald-300" : "text-zinc-500"}>
+                    {aiConfig?.ollamaOnline
+                      ? `ONLINE (${aiConfig.ollamaModels.length} model: ${aiConfig.ollamaModels.join(", ") || "chưa tải model"})`
+                      : "Chưa bật / chưa cài"}
+                  </strong>
+                </p>
+              </div>
+
+              {aiConfig?.lastError && (
+                <div className="border border-red-700/70 bg-red-950/45 p-3 font-mono text-[11px] text-red-200">
+                  Cảnh báo gần nhất: {aiConfig.lastError}
+                </div>
+              )}
+
+              <button
+                type="button"
+                disabled={aiTesting}
+                onClick={handleTestAiNow}
+                className="chamfer-sm inline-flex w-full cursor-pointer items-center justify-center gap-2 border border-amber-400/75 bg-amber-950/40 py-2.5 font-bold text-amber-200 hover:bg-amber-900/50 disabled:opacity-50"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>{aiTesting ? "Đang gọi AI thật kiểm tra..." : "Test Kết Nối AI Thật Ngay"}</span>
+              </button>
+
+              {aiTestResult && (
+                <div
+                  className={`border p-3 font-mono text-[11px] ${
+                    aiTestResult.ok
+                      ? "border-emerald-700/70 bg-emerald-950/40 text-emerald-200"
+                      : "border-red-700/70 bg-red-950/40 text-red-200"
+                  }`}
+                >
+                  <p className="font-bold">
+                    {aiTestResult.ok ? "KẾT NỐI THÀNH CÔNG" : "CHƯA KẾT NỐI ĐƯỢC"} (
+                    {aiTestResult.provider} {"//"} {aiTestResult.model} • {aiTestResult.latencyMs}ms)
+                  </p>
+                  {aiTestResult.reply && <p className="mt-1 text-white">Reply: {aiTestResult.reply}</p>}
+                  {aiTestResult.error && <p className="mt-1">{aiTestResult.error}</p>}
+                </div>
+              )}
+            </div>
+
+            <form
+              onSubmit={(e) => handleSaveAiSettings(e)}
+              className="yokocho-panel chamfer-md space-y-4 p-6 text-xs lg:col-span-7"
+            >
+              <h2 className="font-display text-lg font-bold text-white">
+                Đấu Nối Key Cloud Hoặc Model Ollama (Lưu vào backend/.env)
+              </h2>
+
+              <div>
+                <label className="mb-1 block text-zinc-300">Thứ tự ưu tiên Provider</label>
+                <select
+                  value={aiProviderMode}
+                  onChange={(e) => setAiProviderMode(e.target.value as AiModePreference)}
+                  className="w-full border border-red-900/60 bg-[#080305] px-3 py-2 text-white focus:border-amber-400 focus:outline-none"
+                >
+                  <option value="auto">Tự động (Gemini → OpenAI/Groq → Ollama Local → Fallback)</option>
+                  <option value="gemini">Ưu tiên Google Gemini</option>
+                  <option value="openai">Ưu tiên OpenAI / Groq / OpenRouter</option>
+                  <option value="ollama">Ưu tiên Ollama Local (100% miễn phí trên máy)</option>
+                  <option value="local">Chỉ chạy Garage Fallback</option>
+                </select>
+              </div>
+
+              <div className="space-y-2.5 border border-red-900/40 bg-[#080305]/80 p-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-amber-300">
+                    1. Google Gemini (Khuyên dùng cho Vision soi chóa đèn)
+                  </span>
+                  {aiConfig?.geminiKeyPreview && (
+                    <span className="font-mono text-[10px] text-zinc-400">
+                      Hiện tại: {aiConfig.geminiKeyPreview}
+                    </span>
+                  )}
+                </div>
+                <div className="grid gap-2.5 sm:grid-cols-3">
+                  <div className="sm:col-span-2">
+                    <input
+                      type="password"
+                      value={aiGeminiKeyInput}
+                      onChange={(e) => setAiGeminiKeyInput(e.target.value)}
+                      placeholder="Dán key AIza... mới từ aistudio.google.com/apikey (để trống nếu giữ nguyên)"
+                      className="w-full border border-red-900/60 bg-[#050204] px-3 py-2 font-mono text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+                    />
+                  </div>
+                  <input
+                    value={aiGeminiModelInput}
+                    onChange={(e) => setAiGeminiModelInput(e.target.value)}
+                    placeholder="gemini-2.5-flash"
+                    className="w-full border border-red-900/60 bg-[#050204] px-3 py-2 font-mono text-white focus:border-red-500 focus:outline-none"
+                  />
+                </div>
+                {aiConfig?.geminiKeyPreview && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleSaveAiSettings(e, "gemini")}
+                    className="cursor-pointer font-mono text-[10px] text-red-300 underline hover:text-white"
+                  >
+                    Xóa GEMINI_API_KEY cũ khỏi .env
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2.5 border border-red-900/40 bg-[#080305]/80 p-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-sky-300">
+                    2. OpenAI / Groq / OpenRouter Compatible
+                  </span>
+                  {aiConfig?.openaiKeyPreview && (
+                    <span className="font-mono text-[10px] text-zinc-400">
+                      Key: {aiConfig.openaiKeyPreview}
+                    </span>
+                  )}
+                </div>
+                <div className="grid gap-2.5 sm:grid-cols-3">
+                  <input
+                    type="password"
+                    value={aiOpenaiKeyInput}
+                    onChange={(e) => setAiOpenaiKeyInput(e.target.value)}
+                    placeholder="sk-... hoặc gsk_..."
+                    className="w-full border border-red-900/60 bg-[#050204] px-3 py-2 font-mono text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+                  />
+                  <input
+                    value={aiOpenaiBaseUrlInput}
+                    onChange={(e) => setAiOpenaiBaseUrlInput(e.target.value)}
+                    placeholder="https://api.openai.com/v1"
+                    className="w-full border border-red-900/60 bg-[#050204] px-3 py-2 font-mono text-white focus:border-red-500 focus:outline-none"
+                  />
+                  <input
+                    value={aiOpenaiModelInput}
+                    onChange={(e) => setAiOpenaiModelInput(e.target.value)}
+                    placeholder="gpt-4o-mini"
+                    className="w-full border border-red-900/60 bg-[#050204] px-3 py-2 font-mono text-white focus:border-red-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2.5 border border-red-900/40 bg-[#080305]/80 p-3.5">
+                <span className="block font-bold text-emerald-300">
+                  3. Ollama Local (Chạy trực tiếp trên máy miễn phí 100%)
+                </span>
+                <div className="grid gap-2.5 sm:grid-cols-3">
+                  <input
+                    value={aiOllamaUrlInput}
+                    onChange={(e) => setAiOllamaUrlInput(e.target.value)}
+                    placeholder="http://127.0.0.1:11434"
+                    className="w-full border border-red-900/60 bg-[#050204] px-3 py-2 font-mono text-white focus:border-red-500 focus:outline-none"
+                  />
+                  <input
+                    value={aiOllamaModelInput}
+                    onChange={(e) => setAiOllamaModelInput(e.target.value)}
+                    placeholder={aiConfig?.ollamaModels[0] || "qwen2.5:3b"}
+                    className="w-full border border-red-900/60 bg-[#050204] px-3 py-2 font-mono text-white focus:border-red-500 focus:outline-none"
+                  />
+                  <input
+                    value={aiOllamaVisionModelInput}
+                    onChange={(e) => setAiOllamaVisionModelInput(e.target.value)}
+                    placeholder="qwen2.5vl:3b (Vision)"
+                    className="w-full border border-red-900/60 bg-[#050204] px-3 py-2 font-mono text-white focus:border-red-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={aiSavingConfig}
+                className="chamfer-sm cursor-pointer bg-gradient-to-r from-[#c81628] to-[#ff2e43] px-5 py-2.5 text-xs font-bold text-white shadow-[0_0_20px_rgba(225,29,46,0.45)] disabled:opacity-50"
+              >
+                {aiSavingConfig ? "Đang lưu cấu hình..." : "Lưu Cấu Hình AI & Kích Hoạt Ngay"}
+              </button>
+            </form>
           </div>
         )}
       </main>

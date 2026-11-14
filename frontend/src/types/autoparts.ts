@@ -130,9 +130,15 @@ export interface AdminOverviewResponse {
 }
 
 export type DrivingProfile = "city" | "mountain_rain" | "highway" | "showcar";
+export type AiProviderId =
+  | "gemini"
+  | "openai-compatible"
+  | "ollama"
+  | "yokocho-local-ai";
+export type AiModePreference = "auto" | "gemini" | "openai" | "ollama" | "local";
 
 export interface AiAdviceResponse {
-  provider: "gemini" | "yokocho-local-ai";
+  provider: AiProviderId;
   model: string;
   replyVi: string;
   detectedVehicle?: string;
@@ -143,10 +149,12 @@ export interface AiAdviceResponse {
   bundleDiscountPct: number;
   bundleTotalVnd: number;
   tipVi: string;
+  fallbackReason?: string;
 }
 
 export interface AiAdminDraftResponse {
-  provider: "gemini" | "yokocho-local-ai";
+  provider: AiProviderId;
+  model?: string;
   skuSuggestion: string;
   nameJp: string;
   kanjiMark: string;
@@ -156,4 +164,28 @@ export interface AiAdminDraftResponse {
   summaryVi: string;
   highlights: string[];
   specs: TechnicalSpec;
+}
+
+export interface AiEngineStatus {
+  modePreference: AiModePreference;
+  activeProvider: AiProviderId;
+  activeModel: string;
+  realAiReady: boolean;
+  visionCapable: boolean;
+  geminiConfigured: boolean;
+  openaiConfigured: boolean;
+  ollamaOnline: boolean;
+  ollamaModels: string[];
+  lastError?: string;
+}
+
+export interface AdminAiConfigResponse extends AiEngineStatus {
+  geminiKeyPreview: string;
+  geminiModel: string;
+  openaiKeyPreview: string;
+  openaiBaseUrl: string;
+  openaiModel: string;
+  ollamaBaseUrl: string;
+  ollamaModel: string;
+  ollamaVisionModel: string;
 }

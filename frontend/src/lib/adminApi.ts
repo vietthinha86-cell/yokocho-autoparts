@@ -1,7 +1,10 @@
 import type {
+  AdminAiConfigResponse,
   AdminOverviewResponse,
   AdminProfile,
   AiAdminDraftResponse,
+  AiModePreference,
+  AiProviderId,
   AutoPartProduct,
   OrderRecord,
   PartCategory,
@@ -240,5 +243,80 @@ export async function requestAdminAiDraft(
     return { ok: false, error: data.error ?? "AI không tạo được dữ liệu." };
   }
   return { ok: true, item: data.item };
+}
+
+export async function fetchAdminAiConfig(
+  token: string,
+): Promise<{ ok: boolean; item?: AdminAiConfigResponse; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/ai-config`, {
+      headers: authHeaders(token, false),
+      cache: "no-store",
+    });
+    const data = (await res.json()) as { item?: AdminAiConfigResponse; error?: string };
+    if (!res.ok || !data.item) {
+      return { ok: false, error: data.error ?? "Không tải được cấu hình AI." };
+    }
+    return { ok: true, item: data.item };
+  } catch {
+    return { ok: false, error: "Không kết nối được backend AI config." };
+  }
+}
+
+export async function saveAdminAiConfig(
+  token: string,
+  payload: {
+    aiProvider?: AiModePreference;
+    geminiApiKey?: string;
+    clearGeminiKey?: boolean;
+    geminiModel?: string;
+    openaiApiKey?: string;
+    clearOpenaiKey?: boolean;
+    openaiBaseUrl?: string;
+    openaiModel?: string;
+    ollamaBaseUrl?: string;
+    ollamaModel?: string;
+    ollamaVisionModel?: string;
+  },
+): Promise<{ ok: boolean; item?: AdminAiConfigResponse; error?: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/admin/ai-config`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  const data = (await res.json()) as { item?: AdminAiConfigResponse; error?: string };
+  if (!res.ok || !data.item) {
+    return { ok: false, error: data.error ?? "Lưu cấu hình AI thất bại." };
+  }
+  return { ok: true, item: data.item };
+}
+
+export async function testAdminAiConnection(token: string): Promise<{
+  ok: boolean;
+  provider?: AiProviderId;
+  model?: string;
+  latencyMs?: number;
+  reply?: string;
+  error?: string;
+}> {
+  const res = await fetch(`${API_BASE_URL}/api/admin/ai-test`, {
+    method: "POST",
+    headers: authHeaders(token, false),
+  });
+  const data = (await res.json()) as {
+    item?: {
+      ok: boolean;
+      provider: AiProviderId;
+      model: string;
+      latencyMs: number;
+      reply?: string;
+      error?: string;
+    };
+    error?: string;
+  };
+  if (!res.ok || !data.item) {
+    return { ok: false, error: data.error ?? "Không thể test AI." };
+  }
+  return data.item;
 }
 

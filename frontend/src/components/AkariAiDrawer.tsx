@@ -19,10 +19,11 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useRef, useState } from "react";
-import { formatVnd, requestAiAdvice } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { fetchAiEngineStatus, formatVnd, requestAiAdvice } from "@/lib/api";
 import type {
   AiAdviceResponse,
+  AiEngineStatus,
   AutoPartProduct,
   DrivingProfile,
   VehicleFitment,
@@ -134,6 +135,18 @@ export function AkariAiDrawer({
     filename: string;
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [aiStatus, setAiStatus] = useState<AiEngineStatus | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    fetchAiEngineStatus().then((status) => {
+      if (active && status) setAiStatus(status);
+    });
+    return () => {
+      active = false;
+    };
+  }, [open]);
 
   async function sendToAi(customPayload?: {
     text?: string;
@@ -255,6 +268,28 @@ export function AkariAiDrawer({
                   <p className="text-[11px] text-zinc-400">
                     Tư vấn chân giắc, soi ảnh chóa đèn &amp; ghép combo sáng chuẩn
                   </p>
+                  {aiStatus && (
+                    <span
+                      className={`mt-1 inline-flex items-center gap-1.5 border px-2 py-0.5 font-mono text-[10px] font-bold ${
+                        aiStatus.realAiReady
+                          ? "border-emerald-600/70 bg-emerald-950/60 text-emerald-300"
+                          : "border-amber-700/60 bg-amber-950/40 text-amber-300"
+                      }`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          aiStatus.realAiReady ? "bg-emerald-400" : "bg-amber-400"
+                        }`}
+                      />
+                      {aiStatus.activeProvider === "gemini"
+                        ? `GEMINI LIVE • ${aiStatus.activeModel}`
+                        : aiStatus.activeProvider === "openai-compatible"
+                          ? `CLOUD AI • ${aiStatus.activeModel}`
+                          : aiStatus.activeProvider === "ollama"
+                            ? `OLLAMA REAL AI • ${aiStatus.activeModel}`
+                            : "CHẾ ĐỘ GARA CỤC BỘ"}
+                    </span>
+                  )}
                 </div>
               </div>
               <button
@@ -371,6 +406,17 @@ export function AkariAiDrawer({
                           )}
                           <span className="border border-red-600/60 bg-red-950/60 px-2 py-0.5 text-red-200">
                             {msg.advice.recommendedKelvin}
+                          </span>
+                          <span
+                            className={`border px-2 py-0.5 ${
+                              msg.advice.provider === "yokocho-local-ai"
+                                ? "border-zinc-700 bg-black/50 text-zinc-400"
+                                : "border-emerald-700/70 bg-emerald-950/50 text-emerald-300"
+                            }`}
+                          >
+                            {msg.advice.provider === "yokocho-local-ai"
+                              ? "Gara Local"
+                              : `AI: ${msg.advice.model}`}
                           </span>
                         </div>
 

@@ -10,8 +10,11 @@ describe("Akari Yokocho AutoParts API", () => {
   let server: ReturnType<ReturnType<typeof createApp>["listen"]>;
   let baseUrl = "";
   let tempDir = "";
+  let prevAiProvider: string | undefined;
 
   before(async () => {
+    prevAiProvider = process.env.AI_PROVIDER;
+    process.env.AI_PROVIDER = "local";
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "yokocho-api-test-"));
     const app = createApp({
       ordersFilePath: path.join(tempDir, "orders.json"),
@@ -28,6 +31,11 @@ describe("Akari Yokocho AutoParts API", () => {
   });
 
   after(async () => {
+    if (prevAiProvider === undefined) {
+      delete process.env.AI_PROVIDER;
+    } else {
+      process.env.AI_PROVIDER = prevAiProvider;
+    }
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
     });
@@ -376,5 +384,35 @@ describe("Akari Yokocho AutoParts API", () => {
     assert.ok(genData.item.nameJp.length > 0);
     assert.ok(genData.item.kanjiMark.length > 0);
     assert.ok(genData.item.highlights.length >= 2);
+  });
+
+  it("exposes AI engine runtime status publicly and masked config to admin", async () => {
+    const pubStatusRes = await fetch(`${baseUrl}/api/ai/status`);
+    assert.equal(pubStatusRes.status, 200);
+    const pubStatus = (await pubStatusRes.json()) as {
+      item: { activeProvider: string; modePreference: string };
+    };
+    assert.ok(pubStatus.item.activeProvider.length > 0);
+    assert.ok(pubStatus.item.modePreference.length > 0);
+
+    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: process.env.ADMIN_USERNAME || "admin",
+        password: process.env.ADMIN_PASSWORD || "yokocho2026",
+      }),
+    });
+    const { token } = (await loginRes.json()) as { token: string };
+
+    const cfgRes = await fetch(`${baseUrl}/api/admin/ai-config`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    assert.equal(cfgRes.status, 200);
+    const cfg = (await cfgRes.json()) as {
+      item: { activeProvider: string; geminiModel: string; ollamaBaseUrl: string };
+    };
+    assert.ok(cfg.item.geminiModel.length > 0);
+    assert.ok(cfg.item.ollamaBaseUrl.includes("11434"));
   });
 });

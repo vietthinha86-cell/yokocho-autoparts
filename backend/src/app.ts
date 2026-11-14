@@ -3,10 +3,15 @@ import express from "express";
 import path from "node:path";
 import {
   adviseGarageAi,
+  clearAiDiagnosticsCache,
   generateAdminProductDraft,
+  getAiEngineStatus,
   matchesSmartProductQuery,
+  testLiveAiConnection,
+  type AiModePreference,
   type DrivingProfile,
 } from "./ai/akariAdvisor.ts";
+import { maskSecret, upsertEnvVars } from "./envLoader.ts";
 import {
   createRequireAdminAuth,
   signAdminToken,
@@ -662,7 +667,114 @@ export function createApp(options: AppOptions = {}) {
     res.json({ item: descriptor });
   });
 
-  // --- AKARI AI Night Advisor & Admin Copywriter Endpoints ---
+  async function readAdminAiConfigSnapshot() {
+    const status = await getAiEngineStatus();
+    return {
+      ...status,
+      geminiKeyPreview: maskSecret(process.env.GEMINI_API_KEY),
+      geminiModel: process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash",
+      openaiKeyPreview: maskSecret(process.env.OPENAI_API_KEY),
+      openaiBaseUrl:
+        process.env.OPENAI_BASE_URL?.trim() || "https://api.openai.com/v1",
+      openaiModel: process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini",
+      ollamaBaseUrl:
+        process.env.OLLAMA_BASE_URL?.trim() || "http://127.0.0.1:11434",
+      ollamaModel: process.env.OLLAMA_MODEL?.trim() || "",
+      ollamaVisionModel: process.env.OLLAMA_VISION_MODEL?.trim() || "",
+    };
+  }
+
+  // --- AKARI AI Engine Status, Admin Settings & Night Advisor ---
+  app.get("/api/ai/status", async (_req, res, next) => {
+    try {
+      const status = await getAiEngineStatus();
+      res.json({ item: status });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get("/api/admin/ai-config", requireAdmin, async (_req, res, next) => {
+    try {
+      res.json({ item: await readAdminAiConfigSnapshot() });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post("/api/admin/ai-config", requireAdmin, async (req, res, next) => {
+    try {
+      const body = req.body as Record<string, unknown>;
+      const updates: Record<string, string | undefined> = {};
+
+      const validModes: AiModePreference[] = [
+        "auto",
+        "gemini",
+        "openai",
+        "ollama",
+        "local",
+      ];
+      if (
+        typeof body.aiProvider === "string" &&
+        validModes.includes(body.aiProvider as AiModePreference)
+      ) {
+        updates.AI_PROVIDER = body.aiProvider;
+      }
+
+      if (body.clearGeminiKey === true) {
+        updates.GEMINI_API_KEY = "";
+      } else if (
+        typeof body.geminiApiKey === "string" &&
+        body.geminiApiKey.trim().length > 0
+      ) {
+        updates.GEMINI_API_KEY = body.geminiApiKey.trim();
+      }
+      if (typeof body.geminiModel === "string" && body.geminiModel.trim()) {
+        updates.GEMINI_MODEL = body.geminiModel.trim();
+      }
+
+      if (body.clearOpenaiKey === true) {
+        updates.OPENAI_API_KEY = "";
+      } else if (
+        typeof body.openaiApiKey === "string" &&
+        body.openaiApiKey.trim().length > 0
+      ) {
+        updates.OPENAI_API_KEY = body.openaiApiKey.trim();
+      }
+      if (typeof body.openaiBaseUrl === "string" && body.openaiBaseUrl.trim()) {
+        updates.OPENAI_BASE_URL = body.openaiBaseUrl.trim();
+      }
+      if (typeof body.openaiModel === "string" && body.openaiModel.trim()) {
+        updates.OPENAI_MODEL = body.openaiModel.trim();
+      }
+
+      if (typeof body.ollamaBaseUrl === "string" && body.ollamaBaseUrl.trim()) {
+        updates.OLLAMA_BASE_URL = body.ollamaBaseUrl.trim();
+      }
+      if (typeof body.ollamaModel === "string") {
+        updates.OLLAMA_MODEL = body.ollamaModel.trim();
+      }
+      if (typeof body.ollamaVisionModel === "string") {
+        updates.OLLAMA_VISION_MODEL = body.ollamaVisionModel.trim();
+      }
+
+      upsertEnvVars(updates);
+      clearAiDiagnosticsCache();
+      res.json({ item: await readAdminAiConfigSnapshot() });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post("/api/admin/ai-test", requireAdmin, async (_req, res, next) => {
+    try {
+      const result = await testLiveAiConnection();
+      res.json({ item: result });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.post("/api/ai/advise", async (req, res, next) => {
     try {
       const body = req.body as Record<string, unknown>;
