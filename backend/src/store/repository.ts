@@ -3,6 +3,8 @@ import type {
   AutoPartProduct,
   InventoryLogRecord,
   OrderRecord,
+  ProductReviewRecord,
+  ReviewStatus,
   VehicleBuildCombo,
   VehicleFitment,
 } from "../types.ts";
@@ -41,6 +43,17 @@ export interface GarageRepository {
     role?: string,
   ): Promise<AdminUserRecord>;
   listInventoryLogs(limit?: number): Promise<InventoryLogRecord[]>;
+  listReviews(filter?: {
+    productId?: string;
+    status?: ReviewStatus | "all";
+  }): Promise<ProductReviewRecord[]>;
+  createReview(review: ProductReviewRecord): Promise<ProductReviewRecord>;
+  updateReviewStatus(
+    id: string,
+    status: ReviewStatus,
+    adminNote?: string,
+  ): Promise<ProductReviewRecord | null>;
+  deleteReview(id: string): Promise<boolean>;
   close?(): Promise<void>;
 }
 

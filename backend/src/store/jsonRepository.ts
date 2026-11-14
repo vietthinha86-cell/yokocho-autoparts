@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   AUTO_PARTS_CATALOG,
+  DEFAULT_PRODUCT_REVIEWS,
   VEHICLE_COMBOS,
   VEHICLE_FITMENTS,
 } from "../data/catalog.ts";
@@ -12,6 +13,8 @@ import type {
   AutoPartProduct,
   InventoryLogRecord,
   OrderRecord,
+  ProductReviewRecord,
+  ReviewStatus,
   VehicleBuildCombo,
   VehicleFitment,
 } from "../types.ts";
@@ -24,6 +27,7 @@ interface JsonStoreState {
   orders: OrderRecord[];
   admins: StoredAdminAccount[];
   inventoryLogs: InventoryLogRecord[];
+  reviews: ProductReviewRecord[];
 }
 
 export class JsonRepository implements GarageRepository {
@@ -58,6 +62,7 @@ export class JsonRepository implements GarageRepository {
       orders: [],
       admins: [this.createDefaultAdmin()],
       inventoryLogs: [],
+      reviews: DEFAULT_PRODUCT_REVIEWS.map((r) => ({ ...r })),
     };
 
     if (!fs.existsSync(this.filePath)) {
@@ -85,6 +90,7 @@ export class JsonRepository implements GarageRepository {
           orders: Array.isArray(obj.orders) ? obj.orders : [],
           admins: Array.isArray(obj.admins) && obj.admins.length > 0 ? obj.admins : baseState.admins,
           inventoryLogs: Array.isArray(obj.inventoryLogs) ? obj.inventoryLogs : [],
+          reviews: Array.isArray(obj.reviews) ? obj.reviews : baseState.reviews,
         };
       }
       return baseState;
@@ -284,6 +290,53 @@ export class JsonRepository implements GarageRepository {
 
   async listInventoryLogs(limit = 30): Promise<InventoryLogRecord[]> {
     return this.state.inventoryLogs.slice(0, limit);
+  }
+
+  async listReviews(
+    filter: { productId?: string; status?: ReviewStatus | "all" } = {},
+  ): Promise<ProductReviewRecord[]> {
+    return this.state.reviews
+      .filter((r) => {
+        if (filter.productId && r.productId !== filter.productId) return false;
+        if (filter.status && filter.status !== "all" && r.status !== filter.status) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+
+  async createReview(review: ProductReviewRecord): Promise<ProductReviewRecord> {
+    this.state.reviews.unshift(review);
+    this.save();
+    return review;
+  }
+
+  async updateReviewStatus(
+    id: string,
+    status: ReviewStatus,
+    adminNote?: string,
+  ): Promise<ProductReviewRecord | null> {
+    const idx = this.state.reviews.findIndex((r) => r.id === id);
+    if (idx === -1) return null;
+    const updated: ProductReviewRecord = {
+      ...this.state.reviews[idx],
+      status,
+      adminNote: adminNote !== undefined ? adminNote : this.state.reviews[idx].adminNote,
+    };
+    this.state.reviews[idx] = updated;
+    this.save();
+    return updated;
+  }
+
+  async deleteReview(id: string): Promise<boolean> {
+    const before = this.state.reviews.length;
+    this.state.reviews = this.state.reviews.filter((r) => r.id !== id);
+    const removed = this.state.reviews.length < before;
+    if (removed) {
+      this.save();
+    }
+    return removed;
   }
 }
 

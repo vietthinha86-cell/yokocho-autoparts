@@ -46,6 +46,7 @@ export function CompareModal({
                   alt={p.nameVi}
                   width={24}
                   height={24}
+                  unoptimized={!p.image.startsWith("/")}
                   className="h-6 w-6 object-cover"
                 />
                 <span className="max-w-32 truncate font-medium">{p.nameVi}</span>
@@ -121,6 +122,7 @@ export function CompareModal({
                             alt={p.nameVi}
                             fill
                             sizes="240px"
+                            unoptimized={!p.image.startsWith("/")}
                             className="photo-razor object-cover"
                           />
                         </div>

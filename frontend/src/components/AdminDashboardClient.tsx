@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -8,16 +9,23 @@ import {
   BellRing,
   Bot,
   Box,
+  Camera,
+  CheckCircle2,
   ClipboardList,
   Cpu,
   Database,
+  EyeOff,
   LogOut,
+  MessageSquareQuote,
   Plus,
   RefreshCw,
   Save,
+  ShieldCheck,
   Sparkles,
+  Star,
   Trash2,
   UploadCloud,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { formatVnd } from "@/lib/api";
@@ -25,7 +33,9 @@ import {
   clearStoredAdminToken,
   createAdminProduct,
   deleteAdminProduct,
+  deleteAdminReview,
   fetchAdminAiConfig,
+  fetchAdminReviews,
   fetchAdminSession,
   getStoredAdminToken,
   requestAdminAiDraft,
@@ -34,20 +44,24 @@ import {
   testAdminAiConnection,
   updateAdminOrderStatus,
   updateAdminProduct,
+  updateAdminReviewStatus,
 } from "@/lib/adminApi";
 import type {
   AdminAiConfigResponse,
   AdminOverviewResponse,
   AdminProfile,
+  AdminReviewsResponse,
   AiModePreference,
   AiProviderId,
   AutoPartProduct,
   OrderRecord,
   PartCategory,
+  ProductReviewRecord,
+  ReviewStatus,
   StockStatus,
 } from "@/types/autoparts";
 
-type AdminTab = "orders" | "inventory" | "create" | "logs" | "ai";
+type AdminTab = "orders" | "inventory" | "create" | "logs" | "reviews" | "ai";
 
 const ORDER_STATUS_LABELS: Array<{ value: OrderRecord["status"]; label: string }> = [
   { value: "pending_confirm", label: "Chờ xác nhận giắc" },
@@ -63,6 +77,16 @@ export function AdminDashboardClient() {
   const [overview, setOverview] = useState<AdminOverviewResponse | null>(null);
   const [products, setProducts] = useState<AutoPartProduct[]>([]);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [reviews, setReviews] = useState<ProductReviewRecord[]>([]);
+  const [reviewCounts, setReviewCounts] = useState<AdminReviewsResponse["counts"]>({
+    all: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  });
+  const [reviewFilter, setReviewFilter] = useState<ReviewStatus | "all">("all");
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const [reviewZoomUrl, setReviewZoomUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AdminTab>("orders");
   const [toast, setToast] = useState<string | null>(null);
@@ -136,9 +160,10 @@ export function AdminDashboardClient() {
 
   const refreshData = useCallback(
     async (activeToken: string) => {
-      const [res, aiRes] = await Promise.all([
+      const [res, aiRes, revRes] = await Promise.all([
         fetchAdminSession(activeToken),
         fetchAdminAiConfig(activeToken),
+        fetchAdminReviews(activeToken, "all"),
       ]);
       if (res.unauthorized) {
         clearStoredAdminToken();
@@ -155,6 +180,10 @@ export function AdminDashboardClient() {
       if (aiRes.ok && aiRes.item) {
         applyAiConfigState(aiRes.item);
       }
+      if (revRes.ok && revRes.data) {
+        setReviews(revRes.data.items);
+        setReviewCounts(revRes.data.counts);
+      }
       setLoading(false);
     },
     [applyAiConfigState, router],
@@ -167,27 +196,33 @@ export function AdminDashboardClient() {
       return;
     }
     let cancelled = false;
-    Promise.all([fetchAdminSession(stored), fetchAdminAiConfig(stored)]).then(
-      ([res, aiRes]) => {
-        if (cancelled) return;
-        if (res.unauthorized || !res.ok) {
-          clearStoredAdminToken();
-          router.replace("/admin/login");
-          return;
-        }
-        if (res.admin && res.overview && res.products && res.orders) {
-          setToken(stored);
-          setAdmin(res.admin);
-          setOverview(res.overview);
-          setProducts(res.products);
-          setOrders(res.orders);
-        }
-        if (aiRes.ok && aiRes.item) {
-          applyAiConfigState(aiRes.item);
-        }
-        setLoading(false);
-      },
-    );
+    Promise.all([
+      fetchAdminSession(stored),
+      fetchAdminAiConfig(stored),
+      fetchAdminReviews(stored, "all"),
+    ]).then(([res, aiRes, revRes]) => {
+      if (cancelled) return;
+      if (res.unauthorized || !res.ok) {
+        clearStoredAdminToken();
+        router.replace("/admin/login");
+        return;
+      }
+      if (res.admin && res.overview && res.products && res.orders) {
+        setToken(stored);
+        setAdmin(res.admin);
+        setOverview(res.overview);
+        setProducts(res.products);
+        setOrders(res.orders);
+      }
+      if (aiRes.ok && aiRes.item) {
+        applyAiConfigState(aiRes.item);
+      }
+      if (revRes.ok && revRes.data) {
+        setReviews(revRes.data.items);
+        setReviewCounts(revRes.data.counts);
+      }
+      setLoading(false);
+    });
     return () => {
       cancelled = true;
     };
@@ -247,6 +282,33 @@ export function AdminDashboardClient() {
     }
     await refreshData(token);
     showToast(`Đã cập nhật ${orderCode} → ${nextStatus}`);
+  }
+
+  async function handleUpdateReviewStatus(reviewId: string, nextStatus: ReviewStatus) {
+    if (!token) return;
+    const adminNote = reviewNotes[reviewId]?.trim() || undefined;
+    const res = await updateAdminReviewStatus(token, reviewId, nextStatus, adminNote);
+    if (!res.ok) {
+      showToast(res.error ?? "Cập nhật kiểm duyệt đánh giá thất bại.");
+      return;
+    }
+    await refreshData(token);
+    showToast(
+      nextStatus === "approved"
+        ? "Đã duyệt đánh giá & ảnh xe lên trang công khai!"
+        : "Đã ẩn / từ chối đánh giá khỏi trang công khai.",
+    );
+  }
+
+  async function handleDeleteReview(reviewId: string) {
+    if (!token) return;
+    const res = await deleteAdminReview(token, reviewId);
+    if (!res.ok) {
+      showToast(res.error ?? "Xóa đánh giá thất bại.");
+      return;
+    }
+    await refreshData(token);
+    showToast("Đã xóa đánh giá khỏi hệ thống.");
   }
 
   async function handleSaveProduct(product: AutoPartProduct) {
@@ -541,6 +603,24 @@ export function AdminDashboardClient() {
           >
             <Activity className="h-3.5 w-3.5" />
             <span>Nhật Ký Kho &amp; Webhook</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("reviews")}
+            className={`chamfer-sm inline-flex cursor-pointer items-center gap-1.5 border px-4 py-2 transition ${
+              activeTab === "reviews"
+                ? "border-red-400 bg-[#e11d2e] text-white"
+                : "border-red-900/50 bg-[#12070b] text-zinc-300 hover:border-red-500"
+            }`}
+          >
+            <MessageSquareQuote className="h-3.5 w-3.5" />
+            <span>Đánh Giá Xe ({reviewCounts.all})</span>
+            {reviewCounts.pending > 0 && (
+              <span className="ml-1 rounded-full bg-amber-400 px-1.5 py-0.5 font-mono text-[10px] font-black text-black">
+                {reviewCounts.pending} chờ
+              </span>
+            )}
           </button>
 
           <button
@@ -1198,6 +1278,220 @@ export function AdminDashboardClient() {
                 {aiSavingConfig ? "Đang lưu cấu hình..." : "Lưu Cấu Hình AI & Kích Hoạt Ngay"}
               </button>
             </form>
+          </div>
+        )}
+
+        {/* Tab 6: Customer Reviews Moderation */}
+        {activeTab === "reviews" && (
+          <div className="mt-6 space-y-4">
+            <div className="yokocho-panel chamfer-md flex flex-wrap items-center justify-between gap-3 border border-red-900/50 p-4 text-xs">
+              <div>
+                <p className="font-mono text-[11px] font-bold tracking-widest text-[#ff4d5e] uppercase">
+                  REVIEW MODERATION // Kiểm Duyệt Ảnh Xe &amp; Đánh Giá
+                </p>
+                <p className="mt-1 text-zinc-300">
+                  Mọi đánh giá khách gửi lên sẽ ở trạng thái <strong className="text-amber-300">Chờ duyệt</strong> cho tới khi kỹ thuật viên kiểm tra ảnh thực tế &amp; cho phép lên trang chủ.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { key: "all", label: `Tất cả (${reviewCounts.all})` },
+                    { key: "pending", label: `Chờ duyệt (${reviewCounts.pending})` },
+                    { key: "approved", label: `Đã lên web (${reviewCounts.approved})` },
+                    { key: "rejected", label: `Đã ẩn (${reviewCounts.rejected})` },
+                  ] as const
+                ).map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setReviewFilter(item.key)}
+                    className={`chamfer-sm cursor-pointer border px-3 py-1.5 font-mono text-[11px] font-bold transition ${
+                      reviewFilter === item.key
+                        ? "border-red-400 bg-[#e11d2e] text-white"
+                        : "border-red-900/50 bg-[#12070b] text-zinc-300 hover:border-red-500"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {reviews.filter((r) => reviewFilter === "all" || r.status === reviewFilter).length === 0 ? (
+              <div className="yokocho-panel chamfer-sm p-6 text-center text-xs text-zinc-400">
+                Không có đánh giá nào trong bộ lọc hiện tại.
+              </div>
+            ) : (
+              reviews
+                .filter((r) => reviewFilter === "all" || r.status === reviewFilter)
+                .map((rev) => {
+                  const matchedProduct = products.find((p) => p.id === rev.productId);
+                  const noteDraft = reviewNotes[rev.id] ?? rev.adminNote ?? "";
+                  return (
+                    <div
+                      key={rev.id}
+                      className="yokocho-panel chamfer-md flex flex-col gap-4 border border-red-900/55 p-5 text-xs lg:flex-row lg:items-start lg:justify-between"
+                    >
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                        {rev.photoUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => setReviewZoomUrl(rev.photoUrl!)}
+                            className="group relative h-28 w-40 shrink-0 cursor-pointer overflow-hidden border border-red-800/60 bg-black"
+                            title="Bấm phóng to ảnh xe"
+                          >
+                            <Image
+                              src={rev.photoUrl}
+                              alt={`Ảnh xe ${rev.vehicleInfo}`}
+                              fill
+                              sizes="160px"
+                              unoptimized={!rev.photoUrl.startsWith("/")}
+                              className="object-cover transition group-hover:scale-105"
+                            />
+                            <span className="absolute right-1.5 bottom-1.5 inline-flex items-center gap-1 border border-white/20 bg-black/80 px-1.5 py-0.5 font-mono text-[9px] text-amber-200">
+                              <Camera className="h-3 w-3" />
+                              Phóng to
+                            </span>
+                          </button>
+                        ) : (
+                          <div className="flex h-28 w-40 shrink-0 items-center justify-center border border-zinc-800 bg-black/60 font-mono text-[10px] text-zinc-500">
+                            Không kèm ảnh
+                          </div>
+                        )}
+
+                        <div className="space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`border px-2 py-0.5 font-mono text-[10px] font-bold uppercase ${
+                                rev.status === "approved"
+                                  ? "border-emerald-600/70 bg-emerald-950/70 text-emerald-300"
+                                  : rev.status === "pending"
+                                    ? "border-amber-500/70 bg-amber-950/70 text-amber-300"
+                                    : "border-zinc-700 bg-zinc-900 text-zinc-400"
+                              }`}
+                            >
+                              {rev.status === "approved"
+                                ? "ĐÃ LÊN WEB"
+                                : rev.status === "pending"
+                                  ? "CHỜ DUYỆT"
+                                  : "ĐÃ ẨN"}
+                            </span>
+
+                            {rev.verifiedPurchase && (
+                              <span className="inline-flex items-center gap-1 border border-emerald-700/60 bg-emerald-950/60 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-300">
+                                <ShieldCheck className="h-3 w-3" />
+                                Đã Mua Hàng {rev.orderCode ? `(${rev.orderCode})` : ""}
+                              </span>
+                            )}
+
+                            {rev.beamMode && (
+                              <span className="border border-red-800/60 bg-red-950/40 px-2 py-0.5 font-mono text-[10px] text-red-200 uppercase">
+                                {rev.beamMode}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-bold text-white">{rev.customerName}</span>
+                            <span className="text-zinc-400">• {rev.vehicleInfo}</span>
+                            <span className="inline-flex items-center gap-0.5 text-amber-400">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star
+                                  key={s}
+                                  className={`h-3 w-3 ${
+                                    s <= rev.rating ? "fill-amber-400 text-amber-400" : "text-zinc-600"
+                                  }`}
+                                />
+                              ))}
+                            </span>
+                          </div>
+
+                          <p className="font-mono text-[11px] text-[#ff4d5e]">
+                            Sản phẩm: {matchedProduct ? matchedProduct.nameVi : rev.productId}
+                          </p>
+                          <p className="font-semibold text-zinc-100">{rev.title}</p>
+                          <p className="max-w-2xl leading-relaxed text-zinc-300">{rev.comment}</p>
+                          <p className="font-mono text-[10px] text-zinc-500">
+                            ID: {rev.id} • Gửi lúc: {new Date(rev.createdAt).toLocaleString("vi-VN")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex w-full shrink-0 flex-col gap-2 lg:w-64">
+                        <input
+                          value={noteDraft}
+                          onChange={(e) =>
+                            setReviewNotes((prev) => ({
+                              ...prev,
+                              [rev.id]: e.target.value,
+                            }))
+                          }
+                          placeholder="Ghi chú kiểm duyệt (tùy chọn)..."
+                          className="w-full border border-red-900/60 bg-[#050204] px-2.5 py-1.5 text-[11px] text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateReviewStatus(rev.id, "approved")}
+                            className="chamfer-sm inline-flex flex-1 cursor-pointer items-center justify-center gap-1 border border-emerald-500/70 bg-emerald-950/60 px-3 py-1.5 font-bold text-emerald-200 transition hover:bg-emerald-800/70"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span>Duyệt Lên Web</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateReviewStatus(rev.id, "rejected")}
+                            className="chamfer-sm inline-flex cursor-pointer items-center justify-center gap-1 border border-amber-600/60 bg-amber-950/50 px-3 py-1.5 font-bold text-amber-200 transition hover:bg-amber-900/60"
+                          >
+                            <EyeOff className="h-3.5 w-3.5" />
+                            <span>Ẩn</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReview(rev.id)}
+                            title="Xóa đánh giá vĩnh viễn"
+                            className="chamfer-sm inline-flex cursor-pointer items-center justify-center border border-red-800/70 bg-red-950/60 px-2.5 py-1.5 text-red-300 transition hover:bg-red-800/70 hover:text-white"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+            )}
+          </div>
+        )}
+
+        {reviewZoomUrl && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setReviewZoomUrl(null)}
+          >
+            <div
+              className="relative h-[80vh] w-full max-w-4xl border border-red-600/70 bg-[#050204]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setReviewZoomUrl(null)}
+                aria-label="Đóng ảnh phóng to"
+                className="chamfer-sm absolute top-3 right-3 z-10 cursor-pointer border border-red-500/70 bg-black/85 p-2 text-zinc-200 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <Image
+                src={reviewZoomUrl}
+                alt="Ảnh xe thực tế phóng to"
+                fill
+                sizes="90vw"
+                unoptimized={!reviewZoomUrl.startsWith("/")}
+                className="object-contain p-2"
+              />
+            </div>
           </div>
         )}
       </main>

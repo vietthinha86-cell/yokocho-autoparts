@@ -2,9 +2,12 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import type {
   AdminUserRecord,
   AutoPartProduct,
+  BeamModeChoice,
   InventoryLogRecord,
   OrderRecord,
   PartCategory,
+  ProductReviewRecord,
+  ReviewStatus,
   StockStatus,
   TechnicalSpec,
   VehicleBuildCombo,
@@ -14,6 +17,26 @@ import type { GarageRepository, StoredAdminAccount } from "./repository.ts";
 
 type PrismaProductRow = Awaited<ReturnType<PrismaClient["product"]["findMany"]>>[number];
 type PrismaOrderWithItems = Prisma.OrderGetPayload<{ include: { items: true } }>;
+type PrismaReviewRow = Awaited<ReturnType<PrismaClient["productReview"]["findMany"]>>[number];
+
+function mapReview(row: PrismaReviewRow): ProductReviewRecord {
+  return {
+    id: row.id,
+    productId: row.productId,
+    customerName: row.customerName,
+    vehicleInfo: row.vehicleInfo,
+    rating: row.rating,
+    title: row.title,
+    comment: row.comment,
+    beamMode: (row.beamMode as BeamModeChoice | null) ?? undefined,
+    photoUrl: row.photoUrl ?? undefined,
+    verifiedPurchase: row.verifiedPurchase,
+    orderCode: row.orderCode ?? undefined,
+    status: row.status as ReviewStatus,
+    adminNote: row.adminNote ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
 
 function mapProduct(row: PrismaProductRow): AutoPartProduct {
   return {
@@ -366,6 +389,65 @@ export class PrismaRepository implements GarageRepository {
       actor: r.actor,
       createdAt: r.createdAt.toISOString(),
     }));
+  }
+
+  async listReviews(
+    filter: { productId?: string; status?: ReviewStatus | "all" } = {},
+  ): Promise<ProductReviewRecord[]> {
+    const where: Prisma.ProductReviewWhereInput = {};
+    if (filter.productId) where.productId = filter.productId;
+    if (filter.status && filter.status !== "all") where.status = filter.status;
+    const rows = await this.prisma.productReview.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+    });
+    return rows.map(mapReview);
+  }
+
+  async createReview(review: ProductReviewRecord): Promise<ProductReviewRecord> {
+    const row = await this.prisma.productReview.create({
+      data: {
+        id: review.id,
+        productId: review.productId,
+        customerName: review.customerName,
+        vehicleInfo: review.vehicleInfo,
+        rating: review.rating,
+        title: review.title,
+        comment: review.comment,
+        beamMode: review.beamMode ?? null,
+        photoUrl: review.photoUrl ?? null,
+        verifiedPurchase: review.verifiedPurchase,
+        orderCode: review.orderCode ?? null,
+        status: review.status,
+        adminNote: review.adminNote ?? null,
+        createdAt: new Date(review.createdAt),
+      },
+    });
+    return mapReview(row);
+  }
+
+  async updateReviewStatus(
+    id: string,
+    status: ReviewStatus,
+    adminNote?: string,
+  ): Promise<ProductReviewRecord | null> {
+    const existing = await this.prisma.productReview.findUnique({ where: { id } });
+    if (!existing) return null;
+    const updated = await this.prisma.productReview.update({
+      where: { id },
+      data: {
+        status,
+        adminNote: adminNote !== undefined ? adminNote : existing.adminNote,
+      },
+    });
+    return mapReview(updated);
+  }
+
+  async deleteReview(id: string): Promise<boolean> {
+    const existing = await this.prisma.productReview.findUnique({ where: { id } });
+    if (!existing) return false;
+    await this.prisma.productReview.delete({ where: { id } });
+    return true;
   }
 
   async close(): Promise<void> {

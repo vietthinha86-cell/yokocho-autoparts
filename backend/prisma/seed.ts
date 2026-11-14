@@ -2,6 +2,7 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import {
   AUTO_PARTS_CATALOG,
+  DEFAULT_PRODUCT_REVIEWS,
   VEHICLE_COMBOS,
   VEHICLE_FITMENTS,
 } from "../src/data/catalog.ts";
@@ -127,8 +128,31 @@ async function main() {
     },
   });
 
+  for (const rev of DEFAULT_PRODUCT_REVIEWS) {
+    await prisma.productReview.upsert({
+      where: { id: rev.id },
+      update: {},
+      create: {
+        id: rev.id,
+        productId: rev.productId,
+        customerName: rev.customerName,
+        vehicleInfo: rev.vehicleInfo,
+        rating: rev.rating,
+        title: rev.title,
+        comment: rev.comment,
+        beamMode: rev.beamMode ?? null,
+        photoUrl: rev.photoUrl ?? null,
+        verifiedPurchase: rev.verifiedPurchase,
+        orderCode: rev.orderCode ?? null,
+        status: rev.status,
+        adminNote: rev.adminNote ?? null,
+        createdAt: new Date(rev.createdAt),
+      },
+    });
+  }
+
   console.log(
-    `==> Seeded ${AUTO_PARTS_CATALOG.length} products, ${VEHICLE_FITMENTS.length} fitments, ${VEHICLE_COMBOS.length} combos, and admin '${adminUsername}'.`,
+    `==> Seeded ${AUTO_PARTS_CATALOG.length} products, ${VEHICLE_FITMENTS.length} fitments, ${VEHICLE_COMBOS.length} combos, ${DEFAULT_PRODUCT_REVIEWS.length} reviews, and admin '${adminUsername}'.`,
   );
 }
 

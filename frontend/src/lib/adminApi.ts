@@ -2,12 +2,15 @@ import type {
   AdminAiConfigResponse,
   AdminOverviewResponse,
   AdminProfile,
+  AdminReviewsResponse,
   AiAdminDraftResponse,
   AiModePreference,
   AiProviderId,
   AutoPartProduct,
   OrderRecord,
   PartCategory,
+  ProductReviewRecord,
+  ReviewStatus,
 } from "@/types/autoparts";
 
 const API_BASE_URL =
@@ -318,5 +321,60 @@ export async function testAdminAiConnection(token: string): Promise<{
     return { ok: false, error: data.error ?? "Không thể test AI." };
   }
   return data.item;
+}
+
+export async function fetchAdminReviews(
+  token: string,
+  status: ReviewStatus | "all" = "all",
+): Promise<{ ok: boolean; data?: AdminReviewsResponse; error?: string }> {
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/admin/reviews?status=${encodeURIComponent(status)}`,
+      { headers: authHeaders(token, false), cache: "no-store" },
+    );
+    const data = (await res.json()) as AdminReviewsResponse & { error?: string };
+    if (!res.ok || !Array.isArray(data.items)) {
+      return { ok: false, error: data.error ?? "Không tải được danh sách đánh giá." };
+    }
+    return { ok: true, data };
+  } catch {
+    return { ok: false, error: "Không kết nối được backend kiểm duyệt đánh giá." };
+  }
+}
+
+export async function updateAdminReviewStatus(
+  token: string,
+  id: string,
+  status: ReviewStatus,
+  adminNote?: string,
+): Promise<{ ok: boolean; item?: ProductReviewRecord; error?: string }> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/admin/reviews/${encodeURIComponent(id)}/status`,
+    {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify({ status, adminNote }),
+    },
+  );
+  const data = (await res.json()) as { item?: ProductReviewRecord; error?: string };
+  if (!res.ok || !data.item) {
+    return { ok: false, error: data.error ?? "Cập nhật kiểm duyệt thất bại." };
+  }
+  return { ok: true, item: data.item };
+}
+
+export async function deleteAdminReview(
+  token: string,
+  id: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/admin/reviews/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: authHeaders(token, false),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    return { ok: false, error: data.error ?? "Xóa đánh giá thất bại." };
+  }
+  return { ok: true };
 }
 

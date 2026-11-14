@@ -31,7 +31,7 @@ export function Navbar({ cartCount, apiConnected, onOpenCart, onOpenAi }: Navbar
           </div>
         </a>
 
-        <nav className="hidden items-center gap-7 text-sm font-medium text-zinc-200 md:flex">
+        <nav className="hidden items-center gap-6 text-sm font-medium text-zinc-200 md:flex">
           <a href="#fitment" className="transition-colors hover:text-[#ff4d5e]">
             Tra Cứu Xe
           </a>
@@ -41,6 +41,9 @@ export function Navbar({ cartCount, apiConnected, onOpenCart, onOpenAi }: Navbar
           <a href="#simulator" className="flex items-center gap-1.5 transition-colors hover:text-amber-300">
             <Sparkles className="h-3.5 w-3.5 text-[#ff2e43]" />
             Thử Ánh Sáng
+          </a>
+          <a href="#reviews" className="transition-colors hover:text-[#ff4d5e]">
+            Đánh Giá Xe
           </a>
           <a href="#order-lookup" className="transition-colors hover:text-[#ff4d5e]">
             Tra Đơn Hàng

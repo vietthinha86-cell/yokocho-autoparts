@@ -108,3 +108,23 @@ export interface InventoryLogRecord {
   actor: string;
   createdAt: string;
 }
+
+export type ReviewStatus = "pending" | "approved" | "rejected";
+export type BeamModeChoice = "3000k" | "4300k" | "6000k" | "combo";
+
+export interface ProductReviewRecord {
+  id: string;
+  productId: string;
+  customerName: string;
+  vehicleInfo: string;
+  rating: number;
+  title: string;
+  comment: string;
+  beamMode?: BeamModeChoice;
+  photoUrl?: string;
+  verifiedPurchase: boolean;
+  orderCode?: string;
+  status: ReviewStatus;
+  adminNote?: string;
+  createdAt: string;
+}

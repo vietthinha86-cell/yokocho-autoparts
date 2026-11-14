@@ -107,3 +107,23 @@ model DailyInventoryLog {
   createdAt   DateTime @default(now())
 }
 
+model ProductReview {
+  id               String   @id @default(cuid())
+  productId        String
+  customerName     String
+  vehicleInfo      String
+  rating           Int
+  title            String
+  comment          String
+  beamMode         String?
+  photoUrl         String?
+  verifiedPurchase Boolean  @default(false)
+  orderCode        String?
+  status           String   @default("pending")
+  adminNote        String?
+  createdAt        DateTime @default(now())
+
+  @@index([productId, status])
+  @@index([status, createdAt])
+}
+

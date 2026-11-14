@@ -107,6 +107,8 @@ export interface AdminOverviewResponse {
     pendingOrders: number;
     paidOrders: number;
     totalRevenueVnd: number;
+    pendingReviews?: number;
+    approvedReviews?: number;
   };
   recentNotifications: Array<{
     channel: string;
@@ -188,4 +190,41 @@ export interface AdminAiConfigResponse extends AiEngineStatus {
   ollamaBaseUrl: string;
   ollamaModel: string;
   ollamaVisionModel: string;
+}
+
+export type ReviewStatus = "pending" | "approved" | "rejected";
+export type BeamModeChoice = "3000k" | "4300k" | "6000k" | "combo";
+
+export interface ProductReviewRecord {
+  id: string;
+  productId: string;
+  customerName: string;
+  vehicleInfo: string;
+  rating: number;
+  title: string;
+  comment: string;
+  beamMode?: BeamModeChoice;
+  photoUrl?: string;
+  verifiedPurchase: boolean;
+  orderCode?: string;
+  status: ReviewStatus;
+  adminNote?: string;
+  createdAt: string;
+}
+
+export interface ReviewsFeedResponse {
+  items: ProductReviewRecord[];
+  total: number;
+  averageRating: number;
+  verifiedCount: number;
+}
+
+export interface AdminReviewsResponse {
+  items: ProductReviewRecord[];
+  counts: {
+    all: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+  };
 }

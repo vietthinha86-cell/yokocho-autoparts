@@ -415,4 +415,116 @@ describe("Akari Yokocho AutoParts API", () => {
     assert.ok(cfg.item.geminiModel.length > 0);
     assert.ok(cfg.item.ollamaBaseUrl.includes("11434"));
   });
+
+  it("supports customer installation photo reviews with admin moderation workflow", async () => {
+    const publicBeforeRes = await fetch(`${baseUrl}/api/reviews`);
+    assert.equal(publicBeforeRes.status, 200);
+    const publicBefore = (await publicBeforeRes.json()) as {
+      items: Array<{ id: string; status: string }>;
+      averageRating: number;
+    };
+    assert.ok(publicBefore.items.length >= 4);
+    assert.ok(publicBefore.items.every((r) => r.status === "approved"));
+
+    // Reject unsafe photo scheme
+    const badPhotoRes = await fetch(`${baseUrl}/api/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productId: "akari-biled-yami-v9",
+        customerName: "Test User",
+        vehicleInfo: "Civic 2022",
+        rating: 5,
+        comment: "Đánh giá thử với URL ảnh không hợp lệ",
+        photoUrl: "javascript:alert(1)",
+      }),
+    });
+    assert.equal(badPhotoRes.status, 400);
+
+    // Create a valid review tied to an order created earlier in test run
+    const ordersListRes = await fetch(`${baseUrl}/api/orders/NONEXISTENT-999`);
+    assert.equal(ordersListRes.status, 404);
+
+    const ordRes = await fetch(`${baseUrl}/api/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName: "Hoàng Nam",
+        phone: "0912000999",
+        vehicleInfo: "Mazda CX-5 2024",
+        shippingAddress: "Đà Nẵng",
+        items: [{ productId: "akari-biled-yami-v9", quantity: 1 }],
+      }),
+    });
+    const ordData = (await ordRes.json()) as { item: { orderCode: string } };
+
+    const submitRes = await fetch(`${baseUrl}/api/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productId: "akari-biled-yami-v9",
+        customerName: "Hoàng Nam",
+        vehicleInfo: "Mazda CX-5 2024",
+        rating: 5,
+        title: "Ánh sáng bám đường ướt cực tốt",
+        comment: "Mình vừa nhận đèn lắp trên CX-5, mặt cắt rất đều và đẹp.",
+        beamMode: "4300k",
+        orderCode: ordData.item.orderCode,
+        photoUrl: "/images/build-mazda3-tokyo.jpg",
+      }),
+    });
+    assert.equal(submitRes.status, 201);
+    const createdRev = (await submitRes.json()) as {
+      item: { id: string; status: string; verifiedPurchase: boolean };
+    };
+    assert.equal(createdRev.item.status, "pending");
+    assert.equal(createdRev.item.verifiedPurchase, true);
+
+    // Must not leak to public before approval
+    const publicMidRes = await fetch(`${baseUrl}/api/reviews?productId=akari-biled-yami-v9`);
+    const publicMid = (await publicMidRes.json()) as { items: Array<{ id: string }> };
+    assert.ok(!publicMid.items.some((r) => r.id === createdRev.item.id));
+
+    // Admin moderates & approves review
+    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: process.env.ADMIN_USERNAME || "admin",
+        password: process.env.ADMIN_PASSWORD || "yokocho2026",
+      }),
+    });
+    const { token } = (await loginRes.json()) as { token: string };
+
+    const adminListRes = await fetch(`${baseUrl}/api/admin/reviews?status=pending`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    assert.equal(adminListRes.status, 200);
+    const adminList = (await adminListRes.json()) as {
+      items: Array<{ id: string }>;
+      counts: { pending: number };
+    };
+    assert.ok(adminList.items.some((r) => r.id === createdRev.item.id));
+    assert.ok(adminList.counts.pending >= 1);
+
+    const approveRes = await fetch(`${baseUrl}/api/admin/reviews/${createdRev.item.id}/status`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status: "approved", adminNote: "Ảnh rõ nét" }),
+    });
+    assert.equal(approveRes.status, 200);
+
+    const publicAfterRes = await fetch(`${baseUrl}/api/reviews?productId=akari-biled-yami-v9`);
+    const publicAfter = (await publicAfterRes.json()) as { items: Array<{ id: string }> };
+    assert.ok(publicAfter.items.some((r) => r.id === createdRev.item.id));
+
+    const delRes = await fetch(`${baseUrl}/api/admin/reviews/${createdRev.item.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    assert.equal(delRes.status, 200);
+  });
 });

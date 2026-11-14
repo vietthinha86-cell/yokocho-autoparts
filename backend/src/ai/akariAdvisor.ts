@@ -596,6 +596,100 @@ async function tryOpenAiCompatibleAdvice(
   }
 }
 
+function getOllamaBaseUrl(): string {
+  return (
+    process.env.OLLAMA_BASE_URL?.trim() || "http://127.0.0.1:11434"
+  ).replace(/\/+$/, "");
+}
+
+interface OllamaChatRequestOptions {
+  model: string;
+  prompt: string;
+  imageBase64?: string;
+  formatJson?: boolean;
+  temperature?: number;
+  numCtx: number;
+  numPredict: number;
+  timeoutMs: number;
+}
+
+async function callOllamaChatText(
+  opts: OllamaChatRequestOptions,
+): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
+  const userMessage: Record<string, unknown> = {
+    role: "user",
+    content: opts.prompt,
+  };
+  if (opts.imageBase64) {
+    userMessage.images = [
+      opts.imageBase64.replace(/^data:[^;]+;base64,/, ""),
+    ];
+  }
+
+  try {
+    const res = await fetch(`${getOllamaBaseUrl()}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: opts.model,
+        stream: false,
+        ...(opts.formatJson ? { format: "json" } : {}),
+        keep_alive: "30m",
+        options: {
+          temperature: opts.temperature ?? 0.25,
+          num_ctx: opts.numCtx,
+          num_predict: opts.numPredict,
+        },
+        messages: [userMessage],
+      }),
+      signal: AbortSignal.timeout(opts.timeoutMs),
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      return {
+        ok: false,
+        error: `Ollama HTTP ${res.status}: ${errBody.slice(0, 140)}`,
+      };
+    }
+
+    const data = (await res.json()) as {
+      message?: { content?: string };
+    };
+    const text = data.message?.content?.trim() ?? "";
+    if (!text) {
+      return { ok: false, error: "Ollama trả về phản hồi rỗng." };
+    }
+    return { ok: true, text };
+  } catch (err) {
+    return {
+      ok: false,
+      error:
+        err instanceof Error ? `Ollama error: ${err.message}` : "Ollama error",
+    };
+  }
+}
+
+export async function warmUpOllamaChatModel(): Promise<void> {
+  if (getModePreference() === "local") return;
+  try {
+    const { online, models } = await listOllamaModels();
+    const model = pickBestOllamaModel(models, false);
+    if (!online || !model) return;
+    const res = await fetch(`${getOllamaBaseUrl()}/api/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model, prompt: "", keep_alive: "30m" }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (res.ok && lastDiagnosticError?.startsWith("Ollama")) {
+      lastDiagnosticError = undefined;
+    }
+  } catch {
+    // Non-blocking background warm-up; ignore failures quietly
+  }
+}
+
 async function tryOllamaAdvice(
   input: AiAdviseInput,
 ): Promise<AiAdviseResult | null> {
@@ -604,67 +698,32 @@ async function tryOllamaAdvice(
     return null;
   }
 
-  const baseUrl = (
-    process.env.OLLAMA_BASE_URL?.trim() || "http://127.0.0.1:11434"
-  ).replace(/\/+$/, "");
-
   const hasImage = Boolean(input.imageBase64);
   const selectedModel = pickBestOllamaModel(models, hasImage);
   if (!selectedModel) return null;
 
   const supportsVision = isOllamaVisionModel(selectedModel);
-  const userMessage: Record<string, unknown> = {
-    role: "user",
-    content: buildAdvisorPrompt(input, true),
-  };
+  const result = await callOllamaChatText({
+    model: selectedModel,
+    prompt: buildAdvisorPrompt(input, true),
+    imageBase64: hasImage && supportsVision ? input.imageBase64 : undefined,
+    formatJson: true,
+    temperature: 0.25,
+    numCtx: hasImage ? 2048 : 1536,
+    numPredict: 240,
+    timeoutMs: hasImage ? 150_000 : 90_000,
+  });
 
-  if (hasImage && supportsVision && input.imageBase64) {
-    userMessage.images = [
-      input.imageBase64.replace(/^data:[^;]+;base64,/, ""),
-    ];
-  }
-
-  try {
-    const res = await fetch(`${baseUrl}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: selectedModel,
-        stream: false,
-        format: "json",
-        keep_alive: "30m",
-        options: {
-          temperature: 0.25,
-          num_ctx: hasImage ? 4096 : 2048,
-          num_predict: 240,
-        },
-        messages: [userMessage],
-      }),
-      signal: AbortSignal.timeout(hasImage ? 120_000 : 60_000),
-    });
-
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => "");
-      lastDiagnosticError = `Ollama HTTP ${res.status}: ${errBody.slice(0, 140)}`;
-      return null;
-    }
-
-    const data = (await res.json()) as {
-      message?: { content?: string };
-    };
-    const rawText = data.message?.content;
-    if (!rawText) return null;
-
-    const parsed = extractJsonObject<Record<string, unknown>>(rawText);
-    if (!parsed) return null;
-
-    lastDiagnosticError = undefined;
-    return normalizeAiParsedAdvice(parsed, "ollama", selectedModel, input);
-  } catch (err) {
-    lastDiagnosticError =
-      err instanceof Error ? `Ollama error: ${err.message}` : "Ollama error";
+  if (!result.ok) {
+    lastDiagnosticError = result.error;
     return null;
   }
+
+  const parsed = extractJsonObject<Record<string, unknown>>(result.text);
+  if (!parsed) return null;
+
+  lastDiagnosticError = undefined;
+  return normalizeAiParsedAdvice(parsed, "ollama", selectedModel, input);
 }
 
 export async function adviseGarageAi(input: AiAdviseInput): Promise<AiAdviseResult> {
@@ -937,35 +996,23 @@ export async function generateAdminProductDraft(input: {
     const { online, models } = await listOllamaModels();
     const ollamaModel = pickBestOllamaModel(models, false);
     if (online && ollamaModel) {
-      const ollamaBase = (
-        process.env.OLLAMA_BASE_URL?.trim() || "http://127.0.0.1:11434"
-      ).replace(/\/+$/, "");
-      try {
-        const res = await fetch(`${ollamaBase}/api/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: ollamaModel,
-            stream: false,
-            format: "json",
-            keep_alive: "30m",
-            options: { temperature: 0.3, num_ctx: 1536, num_predict: 260 },
-            messages: [{ role: "user", content: draftPrompt }],
-          }),
-          signal: AbortSignal.timeout(60_000),
-        });
-        if (res.ok) {
-          const data = (await res.json()) as { message?: { content?: string } };
-          const text = data.message?.content;
-          const parsed = text
-            ? extractJsonObject<Omit<AiAdminDraftResult, "provider" | "model">>(text)
-            : null;
-          if (parsed && parsed.skuSuggestion && parsed.nameJp) {
-            return { provider: "ollama", model: ollamaModel, ...parsed };
-          }
+      const res = await callOllamaChatText({
+        model: ollamaModel,
+        prompt: draftPrompt,
+        formatJson: true,
+        temperature: 0.3,
+        numCtx: 1280,
+        numPredict: 260,
+        timeoutMs: 75_000,
+      });
+      if (res.ok) {
+        const parsed = extractJsonObject<Omit<AiAdminDraftResult, "provider" | "model">>(
+          res.text,
+        );
+        if (parsed && parsed.skuSuggestion && parsed.nameJp) {
+          lastDiagnosticError = undefined;
+          return { provider: "ollama", model: ollamaModel, ...parsed };
         }
-      } catch {
-        // Fallback cleanly
       }
     }
   }
@@ -1203,31 +1250,24 @@ export async function testLiveAiConnection(): Promise<{
     if (!online || models.length === 0) {
       return null;
     }
-    const baseUrl = (
-      process.env.OLLAMA_BASE_URL?.trim() || "http://127.0.0.1:11434"
-    ).replace(/\/+$/, "");
-    const res = await fetch(`${baseUrl}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        stream: false,
-        keep_alive: "30m",
-        options: { num_ctx: 1024, num_predict: 20 },
-        messages: [{ role: "user", content: "Reply: AKARI OK" }],
-      }),
-      signal: AbortSignal.timeout(45_000),
+    const res = await callOllamaChatText({
+      model,
+      prompt: "Reply: AKARI OK",
+      temperature: 0.1,
+      numCtx: 512,
+      numPredict: 12,
+      timeoutMs: 75_000,
     });
     if (!res.ok) {
-      const err = `Ollama HTTP ${res.status}`;
-      return { ok: false as const, provider: "ollama" as const, model, error: err };
+      lastDiagnosticError = res.error;
+      return { ok: false as const, provider: "ollama" as const, model, error: res.error };
     }
-    const data = (await res.json()) as { message?: { content?: string } };
+    lastDiagnosticError = undefined;
     return {
       ok: true as const,
       provider: "ollama" as const,
       model,
-      reply: data.message?.content?.trim() || "AKARI OK",
+      reply: res.text || "AKARI OK",
     };
   };
 

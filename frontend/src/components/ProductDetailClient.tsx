@@ -25,9 +25,10 @@ import {
   updateStoredCartQty,
   usePersistentCart,
 } from "@/lib/cartStorage";
-import type { AutoPartProduct } from "@/types/autoparts";
+import type { AutoPartProduct, ProductReviewRecord } from "@/types/autoparts";
 import { AnimatedProductVisual } from "./AnimatedProductVisual";
 import { CartDrawer } from "./CartDrawer";
+import { CustomerReviewsSection } from "./CustomerReviewsSection";
 import { Footer } from "./Footer";
 import { MidnightRainCanvas, type RainBeamColorMode } from "./MidnightRainCanvas";
 import { ProductCard } from "./ProductCard";
@@ -44,6 +45,7 @@ function inferBeamMode(kelvin: string): RainBeamColorMode {
 interface ProductDetailClientProps {
   product: AutoPartProduct;
   related: AutoPartProduct[];
+  reviews?: ProductReviewRecord[];
   apiConnected: boolean;
 }
 
@@ -65,6 +67,7 @@ const STOCK_BADGE: Record<AutoPartProduct["stockStatus"], { label: string; cls: 
 export function ProductDetailClient({
   product,
   related,
+  reviews = [],
   apiConnected,
 }: ProductDetailClientProps) {
   const router = useRouter();
@@ -432,6 +435,16 @@ export function ProductDetailClient({
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Verified Customer Reviews & Real Car Photos */}
+        <div className="-mx-4 mt-14 border-t border-red-900/45 sm:-mx-6 lg:-mx-8">
+          <CustomerReviewsSection
+            initialReviews={reviews}
+            products={[product]}
+            fixedProduct={product}
+            apiConnected={apiConnected}
+          />
         </div>
 
         {/* Related Products */}

@@ -9,15 +9,18 @@ import {
   updateStoredCartQty,
   usePersistentCart,
 } from "@/lib/cartStorage";
+import { FALLBACK_REVIEWS } from "@/lib/api";
 import type {
   AutoPartProduct,
   OrderRecord,
   PartCategory,
+  ProductReviewRecord,
   VehicleBuildCombo,
   VehicleFitment,
 } from "@/types/autoparts";
 import { CartDrawer } from "./CartDrawer";
 import { CompareModal } from "./CompareModal";
+import { CustomerReviewsSection } from "./CustomerReviewsSection";
 import { FitmentBar } from "./FitmentBar";
 import { Footer } from "./Footer";
 import { HeroAlley } from "./HeroAlley";
@@ -35,6 +38,7 @@ interface StorefrontClientProps {
   initialProducts: AutoPartProduct[];
   initialFitments: VehicleFitment[];
   initialCombos: VehicleBuildCombo[];
+  initialReviews?: ProductReviewRecord[];
   apiConnected: boolean;
 }
 
@@ -69,6 +73,7 @@ export function StorefrontClient({
   initialProducts,
   initialFitments,
   initialCombos,
+  initialReviews = FALLBACK_REVIEWS,
   apiConnected,
 }: StorefrontClientProps) {
   const [selectedCategory, setSelectedCategory] = useState<"all" | PartCategory>("all");
@@ -380,6 +385,12 @@ export function StorefrontClient({
           combos={initialCombos}
           products={initialProducts}
           onAddCombo={handleAddCombo}
+        />
+
+        <CustomerReviewsSection
+          initialReviews={initialReviews}
+          products={initialProducts}
+          apiConnected={apiConnected}
         />
 
         <OrderLookup key={lastOrderCode ?? "init"} lastOrderCode={lastOrderCode} />

@@ -111,6 +111,7 @@ export function AnimatedProductVisual({
           alt={alt}
           fill
           sizes={sizes}
+          unoptimized={!src.startsWith("/")}
           className="photo-razor object-cover transition duration-500 group-hover:brightness-115 group-hover:contrast-115"
         />
 

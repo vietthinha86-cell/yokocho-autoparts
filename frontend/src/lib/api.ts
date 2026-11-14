@@ -2,8 +2,11 @@ import type {
   AiAdviceResponse,
   AiEngineStatus,
   AutoPartProduct,
+  BeamModeChoice,
   DrivingProfile,
   OrderRecord,
+  ProductReviewRecord,
+  ReviewsFeedResponse,
   VehicleBuildCombo,
   VehicleFitment,
 } from "@/types/autoparts";
@@ -361,6 +364,73 @@ export const FALLBACK_COMBOS: VehicleBuildCombo[] = [
   },
 ];
 
+export const FALLBACK_REVIEWS: ProductReviewRecord[] = [
+  {
+    id: "rev-civic-yami-01",
+    productId: "akari-biled-yami-v9",
+    customerName: "Minh Quân",
+    vehicleInfo: "Honda Civic RS 2023",
+    rating: 5,
+    title: "Cắt Z-Step cực sắc dưới mưa đêm, không chói xe đối diện",
+    comment:
+      "Lắp giắc zin trong 40 phút không đụng dây điện. Đi cao tốc Long Thành trời mưa tầm tã vẫn nhìn rõ vạch kẻ đường, đá pha laser rất xa.",
+    beamMode: "6000k",
+    photoUrl: "/images/build-civic-night.jpg",
+    verifiedPurchase: true,
+    orderCode: "YKC-DEMO-01",
+    status: "approved",
+    createdAt: "2026-11-12T14:20:00.000Z",
+  },
+  {
+    id: "rev-ranger-kitsune-02",
+    productId: "kuro-fog-kitsune-f30",
+    customerName: "Hoàng Hải",
+    vehicleInfo: "Ford Ranger Wildtrak 2024",
+    rating: 5,
+    title: "3000K vàng bám đường đèo sương mù cực tốt",
+    comment:
+      "Chạy đèo Bảo Lộc sương dày bật 3000K thấy mặt đường ngay, lội nước mưa lớn không bị hấp hơi bên trong thấu kính.",
+    beamMode: "3000k",
+    photoUrl: "/images/build-ranger-rain.jpg",
+    verifiedPurchase: true,
+    orderCode: "YKC-DEMO-02",
+    status: "approved",
+    createdAt: "2026-11-12T19:45:00.000Z",
+  },
+  {
+    id: "rev-mazda-oni-03",
+    productId: "yokocho-tail-oni-seq",
+    customerName: "Tuấn Kiệt",
+    vehicleInfo: "Mazda 3 Signature 2023",
+    rating: 5,
+    title: "Đuôi khói OLED quét đỏ cực ngầu phong cách Tokyo",
+    comment:
+      "Buổi tối bật đề mi hiệu ứng quét LED nhìn sang và ma mị hẳn, Canbus không báo lỗi trên taplo Mazda.",
+    beamMode: "combo",
+    photoUrl: "/images/build-mazda3-tokyo.jpg",
+    verifiedPurchase: true,
+    orderCode: "YKC-DEMO-03",
+    status: "approved",
+    createdAt: "2026-11-13T11:10:00.000Z",
+  },
+  {
+    id: "rev-xpander-miniz-04",
+    productId: "yokocho-miniz-h4",
+    customerName: "Quốc Bảo",
+    vehicleInfo: "Mitsubishi Xpander 2022",
+    rating: 4,
+    title: "Lắp vừa zin chóa H4 không cần đục khoét",
+    comment:
+      "Thay tại nhà rất gọn, ánh sáng 4300K ấm mắt dễ chịu khi đi phố và đi tỉnh ban đêm, sáng hơn bóng zin rõ rệt.",
+    beamMode: "4300k",
+    photoUrl: "/images/miniz-h4-bulb.jpg",
+    verifiedPurchase: true,
+    orderCode: "YKC-DEMO-04",
+    status: "approved",
+    createdAt: "2026-11-13T20:15:00.000Z",
+  },
+];
+
 export interface CatalogResponse {
   products: AutoPartProduct[];
   fitments: VehicleFitment[];
@@ -527,5 +597,64 @@ export async function fetchAiEngineStatus(): Promise<AiEngineStatus | null> {
     return data.item ?? null;
   } catch {
     return null;
+  }
+}
+
+export async function fetchPublicReviews(
+  productId?: string,
+): Promise<ReviewsFeedResponse & { apiConnected: boolean }> {
+  try {
+    const url = productId
+      ? `${API_BASE_URL}/api/reviews?productId=${encodeURIComponent(productId)}`
+      : `${API_BASE_URL}/api/reviews`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error("Reviews endpoint unavailable");
+    const data = (await res.json()) as ReviewsFeedResponse;
+    return { ...data, apiConnected: true };
+  } catch {
+    const items = productId
+      ? FALLBACK_REVIEWS.filter((r) => r.productId === productId)
+      : FALLBACK_REVIEWS;
+    const averageRating =
+      items.length > 0
+        ? Number((items.reduce((s, r) => s + r.rating, 0) / items.length).toFixed(1))
+        : 5.0;
+    return {
+      items,
+      total: items.length,
+      averageRating,
+      verifiedCount: items.filter((r) => r.verifiedPurchase).length,
+      apiConnected: false,
+    };
+  }
+}
+
+export async function submitCustomerReview(payload: {
+  productId: string;
+  customerName: string;
+  vehicleInfo: string;
+  rating: number;
+  title?: string;
+  comment: string;
+  beamMode?: BeamModeChoice;
+  orderCode?: string;
+  photoUrl?: string;
+}): Promise<{ ok: boolean; item?: ProductReviewRecord; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = (await res.json()) as { item?: ProductReviewRecord; error?: string };
+    if (!res.ok || !data.item) {
+      return { ok: false, error: data.error ?? "Không thể gửi đánh giá." };
+    }
+    return { ok: true, item: data.item };
+  } catch {
+    return {
+      ok: false,
+      error: "Không kết nối được Backend API (localhost:4000) để lưu đánh giá.",
+    };
   }
 }

@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import crypto from "node:crypto";
 import path from "node:path";
 import {
   adviseGarageAi,
@@ -28,10 +29,13 @@ import { PrismaRepository } from "./store/prismaRepository.ts";
 import type { GarageRepository } from "./store/repository.ts";
 import type {
   AutoPartProduct,
+  BeamModeChoice,
   OrderItemInput,
   OrderItemRecord,
   OrderRecord,
   PartCategory,
+  ProductReviewRecord,
+  ReviewStatus,
   StockStatus,
 } from "./types.ts";
 
@@ -58,6 +62,23 @@ const VALID_ORDER_STATUS: OrderRecord["status"][] = [
   "shipping",
   "completed",
 ];
+const VALID_REVIEW_STATUS: ReviewStatus[] = ["pending", "approved", "rejected"];
+const VALID_BEAM_MODES: BeamModeChoice[] = ["3000k", "4300k", "6000k", "combo"];
+
+function sanitizeReviewPhotoUrl(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.startsWith("/images/")) return trimmed;
+  if (trimmed.startsWith("https://") && trimmed.length <= 500) return trimmed;
+  if (
+    /^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/i.test(trimmed) &&
+    trimmed.length <= 700_000
+  ) {
+    return trimmed;
+  }
+  return undefined;
+}
 
 function generateOrderCode(): string {
   const randomPart = Math.random().toString(36).slice(2, 6).toUpperCase();
@@ -304,6 +325,109 @@ export function createApp(options: AppOptions = {}) {
     }
   });
 
+  // --- Customer Reviews & Real Installation Photos (Phase 3 v8) ---
+  app.get("/api/reviews", async (req, res, next) => {
+    try {
+      const productId =
+        typeof req.query.productId === "string" ? req.query.productId.trim() : undefined;
+      const items = await repo.listReviews({
+        productId: productId || undefined,
+        status: "approved",
+      });
+      const total = items.length;
+      const averageRating =
+        total > 0
+          ? Number(
+              (items.reduce((sum, item) => sum + item.rating, 0) / total).toFixed(1),
+            )
+          : 5.0;
+      const verifiedCount = items.filter((item) => item.verifiedPurchase).length;
+      res.json({ items, total, averageRating, verifiedCount });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post("/api/reviews", async (req, res, next) => {
+    try {
+      const body = req.body as Record<string, unknown>;
+      const productIdInput =
+        typeof body.productId === "string" ? body.productId.trim() : "";
+      const customerName =
+        typeof body.customerName === "string" ? body.customerName.trim() : "";
+      const vehicleInfo =
+        typeof body.vehicleInfo === "string" ? body.vehicleInfo.trim() : "";
+      const title = typeof body.title === "string" ? body.title.trim() : "";
+      const comment = typeof body.comment === "string" ? body.comment.trim() : "";
+      const rating = Number(body.rating);
+      const beamModeRaw =
+        typeof body.beamMode === "string" ? body.beamMode.trim() : undefined;
+      const beamMode =
+        beamModeRaw && VALID_BEAM_MODES.includes(beamModeRaw as BeamModeChoice)
+          ? (beamModeRaw as BeamModeChoice)
+          : undefined;
+      const orderCodeRaw =
+        typeof body.orderCode === "string" && body.orderCode.trim()
+          ? body.orderCode.trim().toUpperCase()
+          : undefined;
+
+      if (!productIdInput || !customerName || !vehicleInfo || comment.length < 8) {
+        res.status(400).json({
+          error:
+            "Vui lòng chọn sản phẩm, nhập tên, dòng xe và cảm nhận tối thiểu 8 ký tự.",
+        });
+        return;
+      }
+
+      if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+        res.status(400).json({ error: "Số sao đánh giá phải từ 1 đến 5." });
+        return;
+      }
+
+      const product = await repo.findProductBySlugOrId(productIdInput);
+      if (!product) {
+        res.status(404).json({ error: "Sản phẩm đánh giá không tồn tại." });
+        return;
+      }
+
+      const hasInvalidPhoto =
+        typeof body.photoUrl === "string" &&
+        body.photoUrl.trim().length > 0 &&
+        !sanitizeReviewPhotoUrl(body.photoUrl);
+      if (hasInvalidPhoto) {
+        res.status(400).json({
+          error: "Ảnh đính kèm phải là ảnh JPEG/PNG/WebP hợp lệ (dưới 500KB).",
+        });
+        return;
+      }
+
+      const matchedOrder = orderCodeRaw
+        ? await repo.findOrderByCode(orderCodeRaw)
+        : null;
+
+      const review: ProductReviewRecord = {
+        id: `rev-${crypto.randomUUID().slice(0, 8)}`,
+        productId: product.id,
+        customerName: customerName.slice(0, 60),
+        vehicleInfo: vehicleInfo.slice(0, 80),
+        rating,
+        title: (title || `Đánh giá thực tế trên ${vehicleInfo}`).slice(0, 120),
+        comment: comment.slice(0, 800),
+        beamMode,
+        photoUrl: sanitizeReviewPhotoUrl(body.photoUrl),
+        verifiedPurchase: Boolean(matchedOrder),
+        orderCode: matchedOrder?.orderCode ?? orderCodeRaw,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      };
+
+      const created = await repo.createReview(review);
+      res.status(201).json({ item: created });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // --- Payment VietQR Webhook (Issue #4) ---
   app.post("/api/payments/webhook", async (req, res, next) => {
     try {
@@ -409,10 +533,11 @@ export function createApp(options: AppOptions = {}) {
   // --- Admin Operations & Dashboard Endpoints (Issues #2, #3, #7) ---
   app.get("/api/admin/overview", requireAdmin, async (_req, res, next) => {
     try {
-      const [products, orders, inventoryLogs] = await Promise.all([
+      const [products, orders, inventoryLogs, allReviews] = await Promise.all([
         repo.listProducts(),
         repo.listOrders(100),
         repo.listInventoryLogs(15),
+        repo.listReviews({ status: "all" }),
       ]);
 
       const totalRevenueVnd = orders.reduce((sum, o) => sum + o.totalVnd, 0);
@@ -421,6 +546,8 @@ export function createApp(options: AppOptions = {}) {
       const lowStockProducts = products.filter(
         (p) => p.stockStatus !== "in_stock" || p.stockQty <= 4,
       ).length;
+      const pendingReviews = allReviews.filter((r) => r.status === "pending").length;
+      const approvedReviews = allReviews.filter((r) => r.status === "approved").length;
 
       res.json({
         storageDriver: repo.driverName,
@@ -431,6 +558,8 @@ export function createApp(options: AppOptions = {}) {
           pendingOrders,
           paidOrders,
           totalRevenueVnd,
+          pendingReviews,
+          approvedReviews,
         },
         recentNotifications: notifier.history.slice(0, 10),
         recentInventoryLogs: inventoryLogs,
@@ -665,6 +794,70 @@ export function createApp(options: AppOptions = {}) {
 
     const descriptor = createSignedMediaUpload({ filename, contentType, folder });
     res.json({ item: descriptor });
+  });
+
+  // --- Admin Review Moderation Endpoints (v8) ---
+  app.get("/api/admin/reviews", requireAdmin, async (req, res, next) => {
+    try {
+      const rawStatus =
+        typeof req.query.status === "string" ? req.query.status.trim() : "all";
+      const all = await repo.listReviews({ status: "all" });
+      const filterStatus =
+        rawStatus === "pending" || rawStatus === "approved" || rawStatus === "rejected"
+          ? (rawStatus as ReviewStatus)
+          : "all";
+      const items =
+        filterStatus === "all" ? all : all.filter((r) => r.status === filterStatus);
+      res.json({
+        items,
+        counts: {
+          all: all.length,
+          pending: all.filter((r) => r.status === "pending").length,
+          approved: all.filter((r) => r.status === "approved").length,
+          rejected: all.filter((r) => r.status === "rejected").length,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.patch("/api/admin/reviews/:id/status", requireAdmin, async (req, res, next) => {
+    try {
+      const body = req.body as Record<string, unknown>;
+      const status = typeof body.status === "string" ? body.status.trim() : "";
+      if (!VALID_REVIEW_STATUS.includes(status as ReviewStatus)) {
+        res.status(400).json({ error: "Trạng thái kiểm duyệt không hợp lệ." });
+        return;
+      }
+      const adminNote =
+        typeof body.adminNote === "string" ? body.adminNote.trim().slice(0, 200) : undefined;
+      const updated = await repo.updateReviewStatus(
+        readParam(req.params.id),
+        status as ReviewStatus,
+        adminNote,
+      );
+      if (!updated) {
+        res.status(404).json({ error: "Không tìm thấy đánh giá cần kiểm duyệt." });
+        return;
+      }
+      res.json({ item: updated });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.delete("/api/admin/reviews/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const removed = await repo.deleteReview(readParam(req.params.id));
+      if (!removed) {
+        res.status(404).json({ error: "Không tìm thấy đánh giá cần xóa." });
+        return;
+      }
+      res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
   });
 
   async function readAdminAiConfigSnapshot() {

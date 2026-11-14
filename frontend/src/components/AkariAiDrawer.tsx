@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { fetchAiEngineStatus, formatVnd, requestAiAdvice } from "@/lib/api";
+import { compressImageFileToDataUrl } from "@/lib/imageUtils";
 import type {
   AiAdviceResponse,
   AiEngineStatus,
@@ -73,39 +74,6 @@ const QUICK_PROMPTS = [
   "Bán tải Ranger đi đèo nhiều nên gắn Bi-Gầm loại nào?",
   "Chóa Halogen chân H4 muốn sáng gọn không cần đục chóa?",
 ];
-
-async function compressImageToDataUrl(
-  file: File,
-): Promise<{ dataUrl: string; mimeType: string }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Read failed"));
-    reader.onload = () => {
-      const img = document.createElement("img");
-      img.onload = () => {
-        const maxDim = 760;
-        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(img.width * scale));
-        canvas.height = Math.max(1, Math.round(img.height * scale));
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          resolve({ dataUrl: String(reader.result), mimeType: file.type || "image/jpeg" });
-          return;
-        }
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve({
-          dataUrl: canvas.toDataURL("image/jpeg", 0.82),
-          mimeType: "image/jpeg",
-        });
-      };
-      img.onerror = () =>
-        resolve({ dataUrl: String(reader.result), mimeType: file.type || "image/jpeg" });
-      img.src = String(reader.result);
-    };
-    reader.readAsDataURL(file);
-  });
-}
 
 export function AkariAiDrawer({
   open,
@@ -215,7 +183,7 @@ export function AkariAiDrawer({
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const compressed = await compressImageToDataUrl(file);
+      const compressed = await compressImageFileToDataUrl(file);
       setAttachedImage({
         dataUrl: compressed.dataUrl,
         mimeType: compressed.mimeType,
@@ -433,6 +401,7 @@ export function AkariAiDrawer({
                                   alt={part.nameVi}
                                   fill
                                   sizes="56px"
+                                  unoptimized={!part.image.startsWith("/")}
                                   className="object-cover"
                                 />
                               </div>

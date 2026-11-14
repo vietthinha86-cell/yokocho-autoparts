@@ -351,6 +351,7 @@ export function CartDrawer({
                       alt={item.product.nameVi}
                       width={64}
                       height={64}
+                      unoptimized={!item.product.image.startsWith("/")}
                       className="photo-razor h-16 w-16 border border-red-800/45 object-cover"
                     />
                     <div className="min-w-0 flex-1">
