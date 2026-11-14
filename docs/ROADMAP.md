@@ -48,13 +48,13 @@ Dự án được chia thành **4 Phase** rõ ràng để bạn có thể phát 
 ### Backend
 - [x] Tích hợp Webhook thanh toán chuyển khoản QR (`POST /api/payments/webhook` xác thực HMAC-SHA256) tự xác nhận đã thanh toán
 - [x] Gửi thông báo đơn hàng mới & thanh toán về Telegram Bot / Notification log (`NotificationDispatcher`)
-- [ ] Full-text search tiếng Việt không dấu (`PostgreSQL pg_trgm` hoặc Meilisearch) cho mã OEM & tên phụ tùng
+- [x] Full-text search tiếng Việt không dấu & đồng nghĩa kỹ thuật (`normalizeViText` + `matchesSmartProductQuery`) cho mã OEM, dòng xe & tên phụ tùng
 - [ ] Hệ thống đánh giá & ảnh lắp đặt thực tế từ khách hàng (kèm kiểm duyệt)
 
 ### Frontend
 - [x] Hiển thị mã VietQR động ngay màn hình đặt hàng thành công
 - [x] Trang "Xe Đã Lên Đèn" (Gallery cấu hình combo thực tế cho Civic, Bán tải Custom, Mazda 3...)
-- [ ] Mini Chatbot / Form tư vấn chọn chân bóng theo đời xe & ảnh chóa đèn
+- [x] Chatbot `AI Thợ Đêm` (Gemini Vision + Local Fallback) tư vấn chân bóng theo đời xe, cung đường, ngân sách & ảnh chóa đèn (`AkariAiDrawer` + `POST /api/ai/advise`)
 - [ ] Tối ưu Core Web Vitals, `next/image` tối ưu dung lượng, sitemap & OpenGraph SEO
 
 ---

@@ -1,6 +1,6 @@
 "use client";
 
-import { Car, Search, X } from "lucide-react";
+import { Bot, Car, Search, X } from "lucide-react";
 import type { VehicleFitment } from "@/types/autoparts";
 
 interface FitmentBarProps {
@@ -9,6 +9,7 @@ interface FitmentBarProps {
   searchQuery: string;
   onSelectMake: (make: string) => void;
   onSearchChange: (q: string) => void;
+  onOpenAi?: () => void;
 }
 
 export function FitmentBar({
@@ -17,6 +18,7 @@ export function FitmentBar({
   searchQuery,
   onSelectMake,
   onSearchChange,
+  onOpenAi,
 }: FitmentBarProps) {
   const activeVehicle = fitments.find((f) => f.make === selectedMake);
 
@@ -39,23 +41,35 @@ export function FitmentBar({
             </h2>
           </div>
 
-          <div className="relative w-full lg:w-84">
-            <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Tìm mã SKU, KOITO, H11, Bi-LED..."
-              className="w-full border border-red-800/60 bg-[#080305] py-2.5 pr-9 pl-10 text-sm text-[#f3ede8] placeholder:text-zinc-500 focus:border-[#ff2e43] focus:outline-none"
-            />
-            {searchQuery && (
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative w-full lg:w-84">
+              <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Tìm không dấu: 'den gam ranger', 'coi', 'H4'..."
+                className="w-full border border-red-800/60 bg-[#080305] py-2.5 pr-9 pl-10 text-sm text-[#f3ede8] placeholder:text-zinc-500 focus:border-[#ff2e43] focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => onSearchChange("")}
+                  aria-label="Xóa từ khóa"
+                  className="absolute top-1/2 right-2.5 -translate-y-1/2 cursor-pointer text-zinc-400 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {onOpenAi && (
               <button
                 type="button"
-                onClick={() => onSearchChange("")}
-                aria-label="Xóa từ khóa"
-                className="absolute top-1/2 right-2.5 -translate-y-1/2 cursor-pointer text-zinc-400 hover:text-white"
+                onClick={onOpenAi}
+                className="chamfer-sm inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 border border-amber-400/75 bg-gradient-to-r from-[#230905] to-[#331308] px-3.5 py-2.5 text-xs font-bold text-amber-200 transition hover:border-amber-300 hover:brightness-115"
               >
-                <X className="h-4 w-4" />
+                <Bot className="h-4 w-4 text-amber-300" />
+                <span>Hỏi AI Chọn Đèn</span>
               </button>
             )}
           </div>

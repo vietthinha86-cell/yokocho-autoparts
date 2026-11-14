@@ -21,6 +21,9 @@ import { CompareModal } from "./CompareModal";
 import { FitmentBar } from "./FitmentBar";
 import { Footer } from "./Footer";
 import { HeroAlley } from "./HeroAlley";
+import { AkariAiDrawer } from "./AkariAiDrawer";
+import { matchesSmartProductQuery } from "@/lib/smartSearch";
+import type { RainBeamColorMode } from "./MidnightRainCanvas";
 import { Navbar } from "./Navbar";
 import { OrderLookup } from "./OrderLookup";
 import { ProductCard } from "./ProductCard";
@@ -78,12 +81,13 @@ export function StorefrontClient({
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [activeProduct, setActiveProduct] = useState<AutoPartProduct | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [beamMode, setBeamMode] = useState<RainBeamColorMode>("combo");
   const [lastOrderCode, setLastOrderCode] = useState<string | undefined>(undefined);
 
   const cart = usePersistentCart();
 
   const filteredProducts = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
     const list = initialProducts.filter((part) => {
       if (selectedCategory !== "all" && part.category !== selectedCategory) {
         return false;
@@ -112,18 +116,11 @@ export function StorefrontClient({
       if (stockFilter === "jdm_preorder" && part.stockStatus !== "jdm_preorder") {
         return false;
       }
-      if (q) {
-        const hay = [
-          part.nameVi,
-          part.nameJp,
-          part.sku,
-          part.oemRef,
-          part.brand,
-          part.specs.socket ?? "",
-        ]
-          .join(" ")
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
+      if (
+        searchQuery.trim() &&
+        !matchesSmartProductQuery(part, searchQuery, initialFitments)
+      ) {
+        return false;
       }
       return true;
     });
@@ -137,6 +134,7 @@ export function StorefrontClient({
     return list;
   }, [
     initialProducts,
+    initialFitments,
     selectedCategory,
     selectedMake,
     searchQuery,
@@ -192,6 +190,7 @@ export function StorefrontClient({
         cartCount={cartCount}
         apiConnected={apiConnected}
         onOpenCart={() => setCartOpen(true)}
+        onOpenAi={() => setAiOpen(true)}
       />
 
       {/* Razor-sharp animated Midnight Garage Spec Ticker */}
@@ -218,6 +217,7 @@ export function StorefrontClient({
           searchQuery={searchQuery}
           onSelectMake={setSelectedMake}
           onSearchChange={setSearchQuery}
+          onOpenAi={() => setAiOpen(true)}
         />
 
         {/* Product Catalog Section */}
@@ -374,7 +374,7 @@ export function StorefrontClient({
           )}
         </section>
 
-        <RainBeamSimulator />
+        <RainBeamSimulator activeMode={beamMode} onModeChange={setBeamMode} />
 
         <VehicleBuildsShowcase
           combos={initialCombos}
@@ -409,6 +409,25 @@ export function StorefrontClient({
         onClearCart={clearStoredCart}
         onOrderCreated={(order: OrderRecord) => setLastOrderCode(order.orderCode)}
         onJumpToLookup={handleJumpToLookup}
+      />
+
+      <AkariAiDrawer
+        open={aiOpen}
+        onOpen={() => setAiOpen(true)}
+        onClose={() => setAiOpen(false)}
+        products={initialProducts}
+        fitments={initialFitments}
+        selectedVehicleMake={selectedMake}
+        onAddProduct={(p) => addToCart(p)}
+        onAddCombo={handleAddCombo}
+        onApplyBeamMode={(mode) => {
+          setBeamMode(mode);
+          setAiOpen(false);
+          if (typeof document !== "undefined") {
+            const el = document.getElementById("simulator");
+            el?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }}
       />
     </div>
   );

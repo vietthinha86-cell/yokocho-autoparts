@@ -1,9 +1,12 @@
 import type {
+  AiAdviceResponse,
   AutoPartProduct,
+  DrivingProfile,
   OrderRecord,
   VehicleBuildCombo,
   VehicleFitment,
 } from "@/types/autoparts";
+import { buildOfflineAiFallback } from "./smartSearch";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:4000";
@@ -483,5 +486,34 @@ export async function lookupOrder(orderCode: string): Promise<{
       ok: false,
       error: "Chưa kết nối Backend API (localhost:4000) để tra cứu đơn hàng.",
     };
+  }
+}
+
+export async function requestAiAdvice(
+  payload: {
+    message?: string;
+    vehicleMake?: string;
+    drivingProfile?: DrivingProfile;
+    budgetVnd?: number;
+    imageBase64?: string;
+    imageMimeType?: string;
+    imageFilename?: string;
+  },
+  fallbackProducts: AutoPartProduct[],
+  fallbackFitments: VehicleFitment[],
+): Promise<AiAdviceResponse> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/ai/advise`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = (await res.json()) as { item?: AiAdviceResponse };
+    if (!res.ok || !data.item) {
+      throw new Error("AI endpoint unavailable");
+    }
+    return data.item;
+  } catch {
+    return buildOfflineAiFallback(fallbackProducts, fallbackFitments, payload);
   }
 }

@@ -307,4 +307,74 @@ describe("Akari Yokocho AutoParts API", () => {
     assert.equal(paidData.item.status, "packed");
     assert.equal(paidData.item.paymentRef, "FT2611139999");
   });
+
+  it("supports accent-insensitive smart search for Vietnamese queries", async () => {
+    const fogRes = await fetch(
+      `${baseUrl}/api/products?q=${encodeURIComponent("den gam suong mu")}`,
+    );
+    assert.equal(fogRes.status, 200);
+    const fogData = (await fogRes.json()) as { items: Array<{ id: string }> };
+    assert.ok(fogData.items.some((p) => p.id === "kuro-fog-kitsune-f30"));
+
+    const hornRes = await fetch(
+      `${baseUrl}/api/products?q=${encodeURIComponent("coi xe to")}`,
+    );
+    assert.equal(hornRes.status, 200);
+    const hornData = (await hornRes.json()) as { items: Array<{ id: string }> };
+    assert.ok(hornData.items.some((p) => p.id === "piaa-horn-kabuki"));
+  });
+
+  it("provides AI garage recommendations, custom combo pricing, and admin spec generation", async () => {
+    const adviseRes = await fetch(`${baseUrl}/api/ai/advise`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "Xe City 2021 di deo mua tam 4 trieu lap den gi khong choi?",
+        drivingProfile: "mountain_rain",
+      }),
+    });
+    assert.equal(adviseRes.status, 200);
+    const adviseData = (await adviseRes.json()) as {
+      item: {
+        detectedVehicle?: string;
+        recommendedBeamMode: string;
+        recommendedProducts: Array<{ id: string }>;
+        bundleTotalVnd: number;
+      };
+    };
+    assert.ok(adviseData.item.detectedVehicle?.includes("Honda"));
+    assert.equal(adviseData.item.recommendedBeamMode, "3000k");
+    assert.ok(adviseData.item.recommendedProducts.length >= 1);
+    assert.ok(adviseData.item.bundleTotalVnd > 0);
+
+    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: process.env.ADMIN_USERNAME || "admin",
+        password: process.env.ADMIN_PASSWORD || "yokocho2026",
+      }),
+    });
+    const { token } = (await loginRes.json()) as { token: string };
+
+    const genRes = await fetch(`${baseUrl}/api/ai/admin-generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        nameVi: "Bi-LED Akari Titan V10",
+        category: "bi-led",
+        wattage: "75W",
+      }),
+    });
+    assert.equal(genRes.status, 200);
+    const genData = (await genRes.json()) as {
+      item: { nameJp: string; kanjiMark: string; highlights: string[] };
+    };
+    assert.ok(genData.item.nameJp.length > 0);
+    assert.ok(genData.item.kanjiMark.length > 0);
+    assert.ok(genData.item.highlights.length >= 2);
+  });
 });

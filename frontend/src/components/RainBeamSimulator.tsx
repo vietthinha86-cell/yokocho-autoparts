@@ -115,11 +115,25 @@ const BEAM_PROFILES: BeamProfile[] = [
   },
 ];
 
-export function RainBeamSimulator() {
-  const [mode, setMode] = useState<BeamMode>("combo");
+interface RainBeamSimulatorProps {
+  activeMode?: BeamMode;
+  onModeChange?: (mode: BeamMode) => void;
+}
+
+export function RainBeamSimulator({
+  activeMode,
+  onModeChange,
+}: RainBeamSimulatorProps = {}) {
+  const [internalMode, setInternalMode] = useState<BeamMode>("combo");
+  const mode = activeMode ?? internalMode;
   const [highBeam, setHighBeam] = useState(false);
   const [compareHalogen, setCompareHalogen] = useState(true);
   const [splitPct, setSplitPct] = useState(46);
+
+  function selectMode(next: BeamMode) {
+    setInternalMode(next);
+    onModeChange?.(next);
+  }
 
   const active = BEAM_PROFILES.find((p) => p.id === mode) ?? BEAM_PROFILES[4];
   const canHighBeam = mode !== "off";
@@ -397,7 +411,7 @@ export function RainBeamSimulator() {
                     key={profile.id}
                     type="button"
                     onClick={() => {
-                      setMode(profile.id);
+                      selectMode(profile.id);
                       if (profile.id === "off") setHighBeam(false);
                     }}
                     className={`chamfer-sm flex w-full cursor-pointer items-center justify-between border p-3 text-left transition ${

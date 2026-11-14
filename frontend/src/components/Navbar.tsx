@@ -1,15 +1,16 @@
 "use client";
 
-import { ShoppingBag, Sparkles, Wifi, WifiOff } from "lucide-react";
+import { Bot, ShoppingBag, Sparkles, Wifi, WifiOff } from "lucide-react";
 import { ChochinLantern } from "./ChochinLantern";
 
 interface NavbarProps {
   cartCount: number;
   apiConnected: boolean;
   onOpenCart: () => void;
+  onOpenAi?: () => void;
 }
 
-export function Navbar({ cartCount, apiConnected, onOpenCart }: NavbarProps) {
+export function Navbar({ cartCount, apiConnected, onOpenCart, onOpenAi }: NavbarProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-red-800/45 bg-[#060305]/88 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
@@ -62,6 +63,17 @@ export function Navbar({ cartCount, apiConnected, onOpenCart }: NavbarProps) {
             {apiConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
             <span>{apiConnected ? "ONLINE" : "PREVIEW"}</span>
           </div>
+
+          {onOpenAi && (
+            <button
+              type="button"
+              onClick={onOpenAi}
+              className="chamfer-sm hidden cursor-pointer items-center gap-1.5 border border-amber-500/70 bg-amber-950/35 px-3 py-2 text-xs font-bold text-amber-200 transition hover:border-amber-400 hover:bg-amber-950/65 lg:inline-flex"
+            >
+              <Bot className="h-3.5 w-3.5 text-amber-300" />
+              <span>AI Thợ Đêm</span>
+            </button>
+          )}
 
           <button
             type="button"

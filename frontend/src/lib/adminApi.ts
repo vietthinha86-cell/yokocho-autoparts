@@ -1,8 +1,10 @@
 import type {
   AdminOverviewResponse,
   AdminProfile,
+  AiAdminDraftResponse,
   AutoPartProduct,
   OrderRecord,
+  PartCategory,
 } from "@/types/autoparts";
 
 const API_BASE_URL =
@@ -215,6 +217,27 @@ export async function signAdminMediaUpload(
   };
   if (!res.ok || !data.item) {
     return { ok: false, error: data.error ?? "Không thể ký URL upload." };
+  }
+  return { ok: true, item: data.item };
+}
+
+export async function requestAdminAiDraft(
+  token: string,
+  payload: {
+    nameVi: string;
+    category?: PartCategory;
+    wattage?: string;
+    priceVnd?: number;
+  },
+): Promise<{ ok: boolean; item?: AiAdminDraftResponse; error?: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/ai/admin-generate`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  const data = (await res.json()) as { item?: AiAdminDraftResponse; error?: string };
+  if (!res.ok || !data.item) {
+    return { ok: false, error: data.error ?? "AI không tạo được dữ liệu." };
   }
   return { ok: true, item: data.item };
 }

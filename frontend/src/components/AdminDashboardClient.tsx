@@ -13,6 +13,7 @@ import {
   Plus,
   RefreshCw,
   Save,
+  Sparkles,
   Trash2,
   UploadCloud,
 } from "lucide-react";
@@ -24,6 +25,7 @@ import {
   deleteAdminProduct,
   fetchAdminSession,
   getStoredAdminToken,
+  requestAdminAiDraft,
   signAdminMediaUpload,
   updateAdminOrderStatus,
   updateAdminProduct,
@@ -64,6 +66,8 @@ export function AdminDashboardClient() {
 
   // Create Product + Signed Upload state
   const [newNameVi, setNewNameVi] = useState("");
+  const [newNameJp, setNewNameJp] = useState("赤灯特製");
+  const [newKanji, setNewKanji] = useState("光");
   const [newSku, setNewSku] = useState("");
   const [newBrand, setNewBrand] = useState("Akari Yokocho");
   const [newCategory, setNewCategory] = useState<PartCategory>("bi-led");
@@ -72,7 +76,15 @@ export function AdminDashboardClient() {
   const [newOemRef, setNewOemRef] = useState("JDM-PRO-01");
   const [newKelvin, setNewKelvin] = useState("4300K, 6000K");
   const [newWattage, setNewWattage] = useState("65W Cos / 80W Pha");
+  const [newSummaryVi, setNewSummaryVi] = useState("");
+  const [newHighlights, setNewHighlights] = useState<string[]>([]);
+  const [newCompatVehicles, setNewCompatVehicles] = useState<string[]>([
+    "Toyota",
+    "Honda",
+    "Mazda",
+  ]);
   const [newImage, setNewImage] = useState("/images/biled-projector.jpg");
+  const [aiGenerating, setAiGenerating] = useState(false);
   const [mediaFileName, setMediaFileName] = useState("new-biled-lens.webp");
   const [mediaSignResult, setMediaSignResult] = useState<string | null>(null);
 
@@ -172,17 +184,57 @@ export function AdminDashboardClient() {
     showToast(`Đã xóa ${product.sku}`);
   }
 
+  async function handleAiGenerateDraft() {
+    if (!token) return;
+    if (!newNameVi.trim()) {
+      showToast("Nhập tên phụ tùng tiếng Việt trước để AI tạo thông số!");
+      return;
+    }
+    setAiGenerating(true);
+    const res = await requestAdminAiDraft(token, {
+      nameVi: newNameVi.trim(),
+      category: newCategory,
+      wattage: newWattage.trim() || undefined,
+      priceVnd: Number(newPriceVnd) || undefined,
+    });
+    setAiGenerating(false);
+    if (!res.ok || !res.item) {
+      showToast(res.error ?? "Không thể tạo dữ liệu AI.");
+      return;
+    }
+    const draft = res.item;
+    setNewSku(draft.skuSuggestion);
+    setNewNameJp(draft.nameJp);
+    setNewKanji(draft.kanjiMark);
+    setNewOemRef(draft.oemRef);
+    if (draft.specs.wattage) {
+      setNewWattage(draft.specs.wattage);
+    }
+    if (draft.specs.kelvin?.length) {
+      setNewKelvin(draft.specs.kelvin.join(", "));
+    }
+    setNewSummaryVi(draft.summaryVi);
+    setNewHighlights(draft.highlights);
+    setNewCompatVehicles(draft.compatibleVehicles);
+    showToast("AI đã tự điền SKU, tên tiếng Nhật, mô tả & xe tương thích!");
+  }
+
   async function handleCreateProduct(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
     const res = await createAdminProduct(token, {
       nameVi: newNameVi,
+      nameJp: newNameJp.trim() || "赤灯特製",
+      kanjiMark: newKanji.trim() || "光",
       sku: newSku,
       brand: newBrand,
       category: newCategory,
       priceVnd: Number(newPriceVnd),
       stockQty: Number(newStockQty),
       oemRef: newOemRef,
+      summaryVi: newSummaryVi.trim() || undefined,
+      highlights: newHighlights.length > 0 ? newHighlights : undefined,
+      compatibleVehicles: newCompatVehicles,
       image: newImage,
       specs: {
         wattage: newWattage,
@@ -201,6 +253,8 @@ export function AdminDashboardClient() {
     }
     setNewNameVi("");
     setNewSku("");
+    setNewSummaryVi("");
+    setNewHighlights([]);
     await refreshData(token);
     setActiveTab("inventory");
     showToast("Đã thêm phụ tùng mới lên kệ hàng đêm!");
@@ -571,9 +625,20 @@ export function AdminDashboardClient() {
               onSubmit={handleCreateProduct}
               className="yokocho-panel chamfer-md space-y-4 p-6 text-xs lg:col-span-7"
             >
-              <h2 className="font-display text-lg font-bold text-white">
-                Thêm Phụ Tùng Mới Vào Catalog
-              </h2>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-display text-lg font-bold text-white">
+                  Thêm Phụ Tùng Mới Vào Catalog
+                </h2>
+                <button
+                  type="button"
+                  disabled={aiGenerating}
+                  onClick={handleAiGenerateDraft}
+                  className="chamfer-sm inline-flex cursor-pointer items-center gap-1.5 border border-amber-500/70 bg-amber-950/35 px-3 py-1.5 text-[11px] font-bold text-amber-200 transition hover:bg-amber-900/45 disabled:opacity-50"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                  {aiGenerating ? "AI đang soạn..." : "AI Tạo Thông Số & Tiếng Nhật"}
+                </button>
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-zinc-300">Tên phụ tùng (Tiếng Việt) *</label>
@@ -667,6 +732,39 @@ export function AdminDashboardClient() {
                     onChange={(e) => setNewImage(e.target.value)}
                     className="w-full border border-red-900/60 bg-[#080305] px-3 py-2 font-mono text-white focus:border-red-500 focus:outline-none"
                   />
+                </div>
+                <div>
+                  <label className="mb-1 block text-zinc-300">Tên tiếng Nhật (nameJp)</label>
+                  <input
+                    value={newNameJp}
+                    onChange={(e) => setNewNameJp(e.target.value)}
+                    className="font-jp w-full border border-red-900/60 bg-[#080305] px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-zinc-300">Ký hiệu Kanji (1 chữ)</label>
+                  <input
+                    value={newKanji}
+                    onChange={(e) => setNewKanji(e.target.value)}
+                    maxLength={4}
+                    className="font-jp w-full border border-red-900/60 bg-[#080305] px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block text-zinc-300">Mô tả ngắn (summaryVi)</label>
+                  <textarea
+                    rows={2}
+                    value={newSummaryVi}
+                    onChange={(e) => setNewSummaryVi(e.target.value)}
+                    placeholder="AI sẽ tự điền mô tả kỹ thuật chuẩn JDM khi bạn bấm AI Tạo Thông Số..."
+                    className="w-full border border-red-900/60 bg-[#080305] px-3 py-2 text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+                  />
+                  {newCompatVehicles.length > 0 && (
+                    <p className="mt-1.5 font-mono text-[10px] text-amber-300/90">
+                      Hãng xe tương thích: {newCompatVehicles.join(", ")}
+                      {newHighlights.length > 0 ? ` • ${newHighlights.length} điểm nổi bật AI` : ""}
+                    </p>
+                  )}
                 </div>
               </div>
 

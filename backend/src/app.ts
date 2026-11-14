@@ -2,6 +2,12 @@ import cors from "cors";
 import express from "express";
 import path from "node:path";
 import {
+  adviseGarageAi,
+  generateAdminProductDraft,
+  matchesSmartProductQuery,
+  type DrivingProfile,
+} from "./ai/akariAdvisor.ts";
+import {
   createRequireAdminAuth,
   signAdminToken,
   verifyPassword,
@@ -80,6 +86,7 @@ export function createApp(options: AppOptions = {}) {
   app.use(cors());
   app.use(
     express.json({
+      limit: "6mb",
       verify: (req, _res, buf) => {
         (req as express.Request & { rawBody?: string }).rawBody = buf.toString("utf8");
       },
@@ -130,7 +137,10 @@ export function createApp(options: AppOptions = {}) {
       const query =
         typeof req.query.q === "string" ? req.query.q.trim().toLowerCase() : "";
 
-      const catalog = await repo.listProducts();
+      const [catalog, fitments] = await Promise.all([
+        repo.listProducts(),
+        repo.listFitments(),
+      ]);
       const filtered = catalog.filter((part) => {
         if (category && category !== "all" && part.category !== category) {
           return false;
@@ -156,20 +166,8 @@ export function createApp(options: AppOptions = {}) {
         if (Number.isFinite(maxPrice) && maxPrice > 0 && part.priceVnd > maxPrice) {
           return false;
         }
-        if (query) {
-          const haystack = [
-            part.nameVi,
-            part.nameJp,
-            part.sku,
-            part.oemRef,
-            part.brand,
-            part.specs.socket ?? "",
-          ]
-            .join(" ")
-            .toLowerCase();
-          if (!haystack.includes(query)) {
-            return false;
-          }
+        if (query && !matchesSmartProductQuery(part, query, fitments)) {
+          return false;
         }
         return true;
       });
@@ -662,6 +660,98 @@ export function createApp(options: AppOptions = {}) {
 
     const descriptor = createSignedMediaUpload({ filename, contentType, folder });
     res.json({ item: descriptor });
+  });
+
+  // --- AKARI AI Night Advisor & Admin Copywriter Endpoints ---
+  app.post("/api/ai/advise", async (req, res, next) => {
+    try {
+      const body = req.body as Record<string, unknown>;
+      const message = typeof body.message === "string" ? body.message.trim() : "";
+      const vehicleMake =
+        typeof body.vehicleMake === "string" ? body.vehicleMake.trim() : undefined;
+      const drivingProfileRaw =
+        typeof body.drivingProfile === "string" ? body.drivingProfile : undefined;
+      const validProfiles: DrivingProfile[] = [
+        "city",
+        "mountain_rain",
+        "highway",
+        "showcar",
+      ];
+      const drivingProfile =
+        drivingProfileRaw && validProfiles.includes(drivingProfileRaw as DrivingProfile)
+          ? (drivingProfileRaw as DrivingProfile)
+          : undefined;
+      const budgetRaw = Number(body.budgetVnd);
+      const budgetVnd =
+        Number.isFinite(budgetRaw) && budgetRaw > 0 ? budgetRaw : undefined;
+      const imageBase64 =
+        typeof body.imageBase64 === "string" && body.imageBase64.trim()
+          ? body.imageBase64.trim()
+          : undefined;
+      const imageMimeType =
+        typeof body.imageMimeType === "string" ? body.imageMimeType : undefined;
+      const imageFilename =
+        typeof body.imageFilename === "string" ? body.imageFilename : undefined;
+
+      if (!message && !imageBase64 && !drivingProfile) {
+        res.status(400).json({
+          error:
+            "Vui lòng nhập câu hỏi, chọn phong cách lái xe hoặc tải ảnh chóa đèn để AI tư vấn.",
+        });
+        return;
+      }
+
+      const [products, fitments] = await Promise.all([
+        repo.listProducts(),
+        repo.listFitments(),
+      ]);
+
+      const result = await adviseGarageAi({
+        message,
+        vehicleMake,
+        drivingProfile,
+        budgetVnd,
+        imageBase64,
+        imageMimeType,
+        imageFilename,
+        products,
+        fitments,
+      });
+
+      res.json({ item: result });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post("/api/ai/admin-generate", requireAdmin, async (req, res, next) => {
+    try {
+      const body = req.body as Record<string, unknown>;
+      const nameVi = typeof body.nameVi === "string" ? body.nameVi.trim() : "";
+      if (!nameVi) {
+        res.status(400).json({ error: "Vui lòng nhập tên sản phẩm để AI tạo thông số." });
+        return;
+      }
+      const category =
+        typeof body.category === "string" &&
+        VALID_CATEGORIES.includes(body.category as PartCategory)
+          ? (body.category as PartCategory)
+          : "bi-led";
+      const wattage = typeof body.wattage === "string" ? body.wattage : undefined;
+      const priceVnd = Number.isFinite(Number(body.priceVnd))
+        ? Number(body.priceVnd)
+        : undefined;
+
+      const draft = await generateAdminProductDraft({
+        nameVi,
+        category,
+        wattage,
+        priceVnd,
+      });
+      res.json({ item: draft });
+    } catch (err) {
+      next(err);
+    }
   });
 
   app.use(

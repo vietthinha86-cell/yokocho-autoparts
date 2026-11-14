@@ -128,3 +128,32 @@ export interface AdminOverviewResponse {
     createdAt: string;
   }>;
 }
+
+export type DrivingProfile = "city" | "mountain_rain" | "highway" | "showcar";
+
+export interface AiAdviceResponse {
+  provider: "gemini" | "yokocho-local-ai";
+  model: string;
+  replyVi: string;
+  detectedVehicle?: string;
+  detectedSocket?: string;
+  recommendedKelvin: string;
+  recommendedBeamMode: "3000k" | "4300k" | "6000k" | "combo";
+  recommendedProducts: AutoPartProduct[];
+  bundleDiscountPct: number;
+  bundleTotalVnd: number;
+  tipVi: string;
+}
+
+export interface AiAdminDraftResponse {
+  provider: "gemini" | "yokocho-local-ai";
+  skuSuggestion: string;
+  nameJp: string;
+  kanjiMark: string;
+  oemRef: string;
+  badgeText: string;
+  compatibleVehicles: string[];
+  summaryVi: string;
+  highlights: string[];
+  specs: TechnicalSpec;
+}
