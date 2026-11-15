@@ -92,7 +92,7 @@ export function VehicleBuildsShowcase({
                   <h3 className="font-display text-lg leading-snug font-bold tracking-tight text-white">
                     {combo.vehicleTitle}
                   </h3>
-                  <p className="mt-1.5 text-xs leading-relaxed text-zinc-300">
+                  <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-zinc-400">
                     {combo.descriptionVi}
                   </p>
 

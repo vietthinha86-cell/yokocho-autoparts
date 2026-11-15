@@ -152,9 +152,9 @@ export function AnimatedProductVisual({
         <span className="absolute right-0 bottom-0 h-3 w-3 border-r border-b border-red-400/60 transition-colors group-hover:border-amber-400" />
       </div>
 
-      {/* Live Motion Status Micro-Pill */}
-      {variant === "card" && (
-        <div className="pointer-events-none absolute top-11 left-3 z-10 inline-flex items-center gap-1.5 border border-white/15 bg-black/75 px-2 py-0.5 font-mono text-[9px] tracking-[0.16em] text-zinc-200 backdrop-blur-sm">
+      {/* Live Motion Status Micro-Pill (shown inside Modal / Detail view only) */}
+      {variant === "modal" && (
+        <div className="pointer-events-none absolute top-12 left-3.5 z-10 inline-flex items-center gap-1.5 border border-white/15 bg-black/75 px-2 py-0.5 font-mono text-[9px] tracking-[0.16em] text-zinc-200 backdrop-blur-sm">
           <span className="h-1.5 w-1.5 animate-ping bg-[#ff2e43] shadow-[0_0_8px_#ff2e43]" />
           <span>{preset.badgeLabel}</span>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, ExternalLink, Plus, ShieldCheck, X } from "lucide-react";
+import { CarFront, CheckCircle2, ExternalLink, Plus, ShieldCheck, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { formatVnd } from "@/lib/api";
@@ -63,9 +63,14 @@ export function ProductModal({ product, onClose, onAddToCart }: ProductModalProp
           </div>
 
           <div className="p-6 md:col-span-7">
-            <span className="font-mono text-xs font-bold tracking-widest text-[#ff4d5e] uppercase">
-              {product.brand}
-            </span>
+            <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-xs">
+              <span className="font-bold tracking-widest text-[#ff4d5e] uppercase">
+                {product.brand}
+              </span>
+              <span className="text-[11px] text-zinc-400">
+                OEM: {product.oemRef} • Tồn kho: {product.stockQty}
+              </span>
+            </div>
             <h3 className="font-display mt-1 text-xl font-bold tracking-tight text-[#f3ede8]">
               {product.nameVi}
             </h3>
@@ -94,6 +99,12 @@ export function ProductModal({ product, onClose, onAddToCart }: ProductModalProp
                     <dd className="font-mono text-zinc-100">{product.specs.wattage}</dd>
                   </>
                 )}
+                {product.specs.voltage && (
+                  <>
+                    <dt className="text-zinc-500">Điện áp</dt>
+                    <dd className="font-mono text-zinc-100">{product.specs.voltage}</dd>
+                  </>
+                )}
                 {product.specs.lumens && (
                   <>
                     <dt className="text-zinc-500">Quang thông</dt>
@@ -115,6 +126,26 @@ export function ProductModal({ product, onClose, onAddToCart }: ProductModalProp
                 </dd>
               </dl>
             </div>
+
+            {/* Compatible Vehicles */}
+            {product.compatibleVehicles.length > 0 && (
+              <div className="mt-4">
+                <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-zinc-200">
+                  <CarFront className="h-3.5 w-3.5 text-amber-400" />
+                  <span>Các dòng xe tương thích:</span>
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {product.compatibleVehicles.map((make) => (
+                    <span
+                      key={make}
+                      className="border border-zinc-800 bg-[#0d070a] px-2 py-0.5 font-mono text-[10px] text-zinc-300"
+                    >
+                      {make}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Kelvin / Variant selector */}
             <div className="mt-4">

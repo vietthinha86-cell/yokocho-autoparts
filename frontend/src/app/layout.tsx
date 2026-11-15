@@ -55,7 +55,7 @@ export const metadata: Metadata = {
       "Hệ thống ánh sáng Bi-LED, Bi-Gầm phá sương 3 chế độ nhiệt màu, giả lập ánh sáng mưa đêm & trợ lý gara Akari AI Vision.",
     images: [
       {
-        url: "/images/hero-yokocho-alley.jpg",
+        url: "/images/hero-yokocho.jpg",
         width: 1200,
         height: 630,
         alt: "AKARI YOKOCHO Midnight Garage & JDM Lighting",
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     title: "AKARI YOKOCHO // 赤灯横丁 — Phụ Tùng & Đèn Ô Tô Nhật Đêm",
     description:
       "Nâng cấp ánh sáng Bi-LED, Bi-Gầm JDM, kiểm tra chân đèn chuẩn form xe & tư vấn qua AI Vision.",
-    images: ["/images/hero-yokocho-alley.jpg"],
+    images: ["/images/hero-yokocho.jpg"],
   },
   robots: {
     index: true,

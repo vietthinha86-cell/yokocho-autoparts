@@ -412,7 +412,7 @@ export function ProductDetailClient({
                 </div>
                 <div className="relative h-44 w-full overflow-hidden border border-red-900/45 bg-black">
                   <Image
-                    src="/images/yokocho-rain-stage.jpg"
+                    src="/images/alley-beam-stage.jpg"
                     alt="Con hẻm đêm mưa thử tia đèn"
                     fill
                     sizes="(max-width: 1024px) 100vw, 50vw"

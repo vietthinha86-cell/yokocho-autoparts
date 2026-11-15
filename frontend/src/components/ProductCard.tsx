@@ -1,6 +1,6 @@
 "use client";
 
-import { GitCompareArrows, Plus, Shield, Zap } from "lucide-react";
+import { GitCompareArrows, Plus } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { formatVnd } from "@/lib/api";
@@ -84,14 +84,14 @@ export function ProductCard({
         />
 
         {/* Top badges */}
-        <div className="absolute top-3 right-4 left-3 z-20 flex items-center justify-between gap-2">
+        <div className="absolute top-3 right-3 left-3 z-20 flex items-center justify-between gap-2">
           <span className="chamfer-sm border border-red-500/75 bg-[#1b0509]/92 px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-wider text-red-200 backdrop-blur-sm">
             {product.badgeText}
           </span>
           <span
             className={`border px-2 py-0.5 font-mono text-[10px] font-bold ${stock.classes}`}
           >
-            {stock.text} ({product.stockQty})
+            {stock.text}
           </span>
         </div>
 
@@ -100,62 +100,29 @@ export function ProductCard({
           <span className="font-jp text-xs font-bold text-amber-300 drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]">
             {product.nameJp}
           </span>
-          <span className="border border-white/15 bg-black/85 px-1.5 py-0.5 font-mono text-[10px] text-zinc-300">
-            {product.sku}
-          </span>
         </div>
 
         {/* Bottom razor crimson laser line on hover */}
         <div className="pointer-events-none absolute bottom-0 left-0 z-20 h-[2px] w-0 bg-gradient-to-r from-[#ff2e43] via-amber-400 to-[#ff2e43] shadow-[0_0_12px_#ff2e43] transition-all duration-500 group-hover:w-full" />
       </div>
 
-      <div className="relative z-20 flex flex-1 flex-col justify-between p-5">
+      <div className="relative z-20 flex flex-1 flex-col justify-between p-4 sm:p-5">
         <div>
-          <div className="flex items-center justify-between font-mono text-[11px] text-zinc-400">
-            <span className="font-bold tracking-wider text-[#ff4d5e]">{product.brand}</span>
-            <span>OEM: {product.oemRef}</span>
+          <div className="flex items-center justify-between gap-2 font-mono text-[11px] text-zinc-400">
+            <span className="truncate font-bold tracking-wider text-[#ff4d5e]">{product.brand}</span>
+            <span className="shrink-0 text-amber-300/90">
+              {product.specs.wattage ?? product.specs.voltage ?? `BH ${product.specs.warrantyMonths}T`}
+            </span>
           </div>
 
-          <h3 className="font-display mt-1.5 text-[17px] leading-snug font-bold tracking-tight text-[#f3ede8] transition-colors group-hover:text-[#ff4d5e]">
+          <h3 className="font-display mt-1.5 line-clamp-2 text-[17px] leading-snug font-bold tracking-tight text-[#f3ede8] transition-colors group-hover:text-[#ff4d5e]">
             <Link href={`/san-pham/${product.slug}`} className="hover:underline">
               {product.nameVi}
             </Link>
           </h3>
-
-          <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-300">
-            {product.summaryVi}
-          </p>
-
-          {/* Compact Japanese technical spec strip */}
-          <div className="mt-3.5 grid grid-cols-2 gap-2 border border-red-900/45 bg-[#080305] p-2.5 text-[11px]">
-            <div className="flex items-center gap-1.5 text-zinc-200">
-              <Zap className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-              <span className="truncate">{product.specs.wattage ?? product.specs.voltage}</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-zinc-200">
-              <Shield className="h-3.5 w-3.5 shrink-0 text-[#ff4d5e]" />
-              <span>BH {product.specs.warrantyMonths} tháng</span>
-            </div>
-          </div>
-
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {product.compatibleVehicles.slice(0, 4).map((make) => (
-              <span
-                key={make}
-                className="border border-zinc-800 bg-[#0d070a] px-2 py-0.5 font-mono text-[10px] text-zinc-300"
-              >
-                {make}
-              </span>
-            ))}
-            {product.compatibleVehicles.length > 4 && (
-              <span className="border border-zinc-800 bg-[#0d070a] px-2 py-0.5 font-mono text-[10px] text-zinc-400">
-                +{product.compatibleVehicles.length - 4}
-              </span>
-            )}
-          </div>
         </div>
 
-        <div className="mt-5 flex items-end justify-between border-t border-red-900/40 pt-4">
+        <div className="mt-4 flex items-end justify-between gap-2 border-t border-red-900/40 pt-3.5">
           <div>
             {product.originalPriceVnd && (
               <p className="font-mono text-xs text-zinc-500 line-through">
@@ -172,15 +139,14 @@ export function ProductCard({
               <button
                 type="button"
                 onClick={() => onToggleCompare(product)}
-                title="So sánh thông số sản phẩm"
+                title={isCompared ? "Bỏ so sánh" : "So sánh thông số sản phẩm"}
                 aria-label={`So sánh ${product.nameVi}`}
-                className={`chamfer-sm inline-flex cursor-pointer items-center gap-1 border px-2.5 py-2 text-xs font-semibold transition ${isCompared
+                className={`chamfer-sm inline-flex cursor-pointer items-center justify-center border p-2 text-xs font-semibold transition ${isCompared
                     ? "border-amber-400 bg-amber-500/20 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.3)]"
                     : "border-zinc-700 bg-[#12070b] text-zinc-300 hover:border-amber-400/70 hover:text-amber-200"
                   }`}
               >
                 <GitCompareArrows className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{isCompared ? "Đã Chọn" : "So Sánh"}</span>
               </button>
             )}
             <button
@@ -188,7 +154,7 @@ export function ProductCard({
               onClick={() => onSelect(product)}
               className="chamfer-sm cursor-pointer border border-red-800/65 bg-[#16090d] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-red-400 hover:text-white"
             >
-              Thông Số
+              Chi Tiết
             </button>
             <button
               type="button"
