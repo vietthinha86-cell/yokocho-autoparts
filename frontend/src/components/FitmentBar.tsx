@@ -31,12 +31,12 @@ export function FitmentBar({
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold tracking-[0.14em] text-[#ff4d5e] uppercase">
-              <Car className="h-4 w-4" />
-              <span className="font-jp">車両適合検索</span>
-              <span className="font-mono">{"//"} Tra Cứu Tương Thích Theo Xe</span>
+            <div className="flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.2em] text-[#ff4d5e] uppercase">
+              <Car className="h-3.5 w-3.5" />
+              <span>TRA CỨU TƯƠNG THÍCH XE</span>
+              <span className="font-jp text-zinc-500">車両適合</span>
             </div>
-            <h2 className="font-display mt-1 text-lg font-bold tracking-tight text-[#f3ede8]">
+            <h2 className="font-display mt-1.5 text-lg leading-snug font-bold tracking-[-0.015em] text-[#f3ede8] sm:text-xl">
               Chọn Hãng Xe hoặc Nhập Mã OEM / Chân Bóng (H4, H11, Bi-Gầm...)
             </h2>
           </div>

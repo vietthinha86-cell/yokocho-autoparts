@@ -63,15 +63,6 @@ const KELVIN_FILTERS = [
   { id: "Crimson", label: "Đỏ Huyết / Khói" },
 ];
 
-const TICKER_ITEMS = [
-  "赤灯横丁 // KHO QUANG HỌC JDM ĐÊM",
-  "KIỂM GIẮC ZIN PLUG & PLAY 100%",
-  "MẶT CẮT Z-STEP NHẬT KHÔNG CHÓI XE ĐỐI DIỆN",
-  "BI-GẦM 3000K PHÁ SƯƠNG XUYÊN MƯA BÃO",
-  "BẢO HÀNH ĐIỆN TỬ 1 ĐỔI 1 TỚI 36 THÁNG",
-  "FREESHIP TOÀN QUỐC TỪ 3.000.000₫",
-];
-
 export function StorefrontClient({
   initialProducts,
   initialFitments,
@@ -208,21 +199,6 @@ export function StorefrontClient({
         onOpenAi={() => setAiOpen(true)}
       />
 
-      {/* Razor-sharp animated Midnight Garage Spec Ticker */}
-      <div className="overflow-hidden border-b border-red-800/45 bg-[#0b0306] py-1.5 font-sans text-[11px] font-semibold tracking-[0.06em] text-zinc-300">
-        <div className="animate-ticker">
-          {[...TICKER_ITEMS, ...TICKER_ITEMS].map((text, idx) => (
-            <span
-              key={`${text}-${idx}`}
-              className="mx-5 inline-flex items-center gap-2.5 whitespace-nowrap"
-            >
-              <span className="text-[10px] text-[#ff2e43]">◆</span>
-              <span className={idx % 2 === 0 ? "text-amber-300" : "text-zinc-200"}>{text}</span>
-            </span>
-          ))}
-        </div>
-      </div>
-
       <main>
         <HeroAlley />
 
@@ -249,13 +225,11 @@ export function StorefrontClient({
               />
             )}
             <div>
-              <p className="flex items-center gap-2 text-xs font-bold tracking-[0.16em] text-[#ff4d5e] uppercase">
-                <span className="font-jp">夜の陳列棚</span>
-                <span className="font-mono">
-                  {"//"} Kệ Hàng Đêm ({filteredProducts.length} sản phẩm)
-                </span>
+              <p className="flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.2em] text-[#ff4d5e] uppercase">
+                <span>KỆ HÀNG ĐÊM · {filteredProducts.length} SẢN PHẨM</span>
+                <span className="font-jp text-zinc-500">夜の陳列棚</span>
               </p>
-              <h2 className="font-display mt-1.5 text-2xl font-bold tracking-tight text-[#f3ede8] sm:text-3xl">
+              <h2 className="font-display mt-1.5 text-2xl leading-[1.2] font-bold tracking-[-0.02em] text-[#f3ede8] sm:text-3xl">
                 Phụ Tùng &amp; Đèn Tăng Sáng Tuyển Chọn
               </h2>
             </div>

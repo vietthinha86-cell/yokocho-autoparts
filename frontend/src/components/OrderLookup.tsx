@@ -95,15 +95,15 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
         <div className="yokocho-panel chamfer-md relative p-6 lg:col-span-6">
           <span className="pointer-events-none absolute top-0 left-0 h-2.5 w-2.5 border-t border-l border-[#ff2e43]" />
           <span className="pointer-events-none absolute right-0 bottom-0 h-2.5 w-2.5 border-r border-b border-[#ff2e43]" />
-          <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-red-400 uppercase">
-            <PackageSearch className="h-4 w-4" />
-            <span className="font-jp">注文追跡</span>
-            <span className="font-mono">{"//"} Tra Cứu Đơn Hàng Nhanh</span>
+          <div className="flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.2em] text-red-400 uppercase">
+            <PackageSearch className="h-3.5 w-3.5" />
+            <span>TRA CỨU ĐƠN HÀNG</span>
+            <span className="font-jp text-zinc-500">注文追跡</span>
           </div>
-          <h2 className="font-display mt-1.5 text-xl font-bold tracking-tight text-white">
+          <h2 className="font-display mt-1.5 text-xl leading-snug font-bold tracking-[-0.015em] text-white">
             Kiểm Tra Trạng Thái Đơn Phụ Tùng
           </h2>
-          <p className="mt-1.5 text-xs text-zinc-400">
+          <p className="mt-1.5 text-[13px] leading-relaxed text-zinc-400">
             Nhập mã đơn <span className="font-mono text-amber-300">YKC-...</span> sau khi đặt hàng
             để theo dõi tiến độ đóng gói, kiểm giắc và giao nhận.
           </p>
@@ -245,12 +245,12 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
         <div className="yokocho-panel chamfer-md relative p-6 lg:col-span-6">
           <span className="pointer-events-none absolute top-0 left-0 h-2.5 w-2.5 border-t border-l border-amber-400/90" />
           <span className="pointer-events-none absolute right-0 bottom-0 h-2.5 w-2.5 border-r border-b border-amber-400/90" />
-          <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-amber-400 uppercase">
-            <ShieldCheck className="h-4 w-4" />
-            <span className="font-jp">夜間保証・取付案内</span>
-            <span className="font-mono">{"//"} Hậu Mãi Xưởng Đêm</span>
+          <div className="flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.2em] text-amber-400 uppercase">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>HẬU MÃI XƯỞNG ĐÊM</span>
+            <span className="font-jp text-zinc-500">夜間保証</span>
           </div>
-          <h2 className="font-display mt-1.5 text-xl font-bold tracking-tight text-white">
+          <h2 className="font-display mt-1.5 text-xl leading-snug font-bold tracking-[-0.015em] text-white">
             Cam Kết Lắp Đặt &amp; Bảo Hành Độc Quyền
           </h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">

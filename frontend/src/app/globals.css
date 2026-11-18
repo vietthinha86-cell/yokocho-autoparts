@@ -2,7 +2,7 @@
 
 @theme inline {
   --font-sans: var(--font-be-vietnam), var(--font-noto-jp), "Be Vietnam Pro", system-ui, sans-serif;
-  --font-display: var(--font-chakra), var(--font-be-vietnam), var(--font-noto-jp), sans-serif;
+  --font-display: var(--font-lexend), var(--font-be-vietnam), var(--font-noto-jp), sans-serif;
   --font-mono: var(--font-jetbrains), var(--font-be-vietnam), var(--font-noto-jp), ui-monospace, monospace;
   --font-jp: var(--font-noto-jp), var(--font-be-vietnam), sans-serif;
 }
@@ -339,26 +339,6 @@ body {
   animation: roadShimmer 2.6s ease-in-out infinite;
 }
 
-/* Scrolling Japanese midnight garage ticker */
-@keyframes yokochoTicker {
-  0% {
-    transform: translateX(0%);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-.animate-ticker {
-  display: flex;
-  width: max-content;
-  animation: yokochoTicker 30s linear infinite;
-}
-
-.animate-ticker:hover {
-  animation-play-state: paused;
-}
-
 /* Crisp scanline micro-texture (very subtle) */
 .hud-scanlines {
   background-image: repeating-linear-gradient(
@@ -442,7 +422,6 @@ body {
   .animate-seq-scan,
   .animate-optic-pulse,
   .animate-road-shimmer,
-  .animate-ticker,
   .animate-chroma-burst,
   .animate-prism-sweep,
   .animate-orbit-slow,

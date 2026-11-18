@@ -119,7 +119,7 @@ export function ProductDetailClient({
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-6 text-xs font-semibold tracking-wide text-zinc-200 md:flex">
+          <nav className="hidden items-center gap-6 text-[13px] font-medium text-zinc-200 md:flex">
             <Link href="/#fitment" className="transition hover:text-[#ff4d5e]">
               Tra Cứu Xe
             </Link>
@@ -130,8 +130,8 @@ export function ProductDetailClient({
               <Sparkles className="h-3.5 w-3.5 text-amber-400" />
               Thử Ánh Sáng
             </Link>
-            <Link href="/#builds" className="transition hover:text-[#ff4d5e]">
-              Xe Lên Đèn
+            <Link href="/#reviews" className="transition hover:text-[#ff4d5e]">
+              Đánh Giá Xe
             </Link>
           </nav>
 
@@ -249,10 +249,10 @@ export function ProductDetailClient({
           {/* Right spec & buy box */}
           <div className="lg:col-span-7">
             <div className="yokocho-panel chamfer-md p-6 sm:p-8">
-              <span className="font-mono text-xs font-bold tracking-[0.18em] text-[#ff4d5e] uppercase">
-                {product.brand} {"//"} {product.category}
+              <span className="font-mono text-xs font-semibold tracking-[0.2em] text-[#ff4d5e] uppercase">
+                {product.brand} · {product.category}
               </span>
-              <h1 className="font-display mt-1.5 text-2xl leading-tight font-bold tracking-tight text-white sm:text-3xl">
+              <h1 className="font-display mt-1.5 text-2xl leading-[1.2] font-bold tracking-[-0.02em] text-white sm:text-3xl">
                 {product.nameVi}
               </h1>
 
@@ -348,10 +348,10 @@ export function ProductDetailClient({
 
               {/* Technical Spec Table */}
               <div className="mt-7 border border-red-900/45 bg-[#080305] p-4 text-xs">
-                <p className="mb-3 flex items-center gap-2 text-[11px] font-bold tracking-wider text-red-400 uppercase">
+                <p className="mb-3 flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.18em] text-red-400 uppercase">
                   <Zap className="h-3.5 w-3.5 text-amber-400" />
-                  <span className="font-jp">仕様明細</span>
-                  <span className="font-mono">{"//"} Thông Số Kỹ Thuật Chi Tiết</span>
+                  <span>THÔNG SỐ KỸ THUẬT CHI TIẾT</span>
+                  <span className="font-jp text-zinc-500">仕様明細</span>
                 </p>
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5 sm:grid-cols-4">
                   <div>
@@ -473,10 +473,11 @@ export function ProductDetailClient({
           <section className="mt-16 border-t border-red-900/45 pt-10">
             <div className="mb-6 flex items-end justify-between">
               <div>
-                <p className="font-mono text-xs font-bold tracking-[0.16em] text-[#ff4d5e] uppercase">
-                  関連部品 {"//"} Phối Ghép Đề Xuất
+                <p className="flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.2em] text-[#ff4d5e] uppercase">
+                  <span>PHỐI GHÉP ĐỀ XUẤT</span>
+                  <span className="font-jp text-zinc-500">関連部品</span>
                 </p>
-                <h2 className="font-display mt-1 text-2xl font-bold text-white">
+                <h2 className="font-display mt-1.5 text-2xl leading-[1.2] font-bold tracking-[-0.02em] text-white">
                   Phụ Tùng Thường Đi Kèm
                 </h2>
               </div>

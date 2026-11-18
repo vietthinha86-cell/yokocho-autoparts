@@ -22,20 +22,20 @@ export function Navbar({ cartCount, apiConnected, onOpenCart, onOpenAi }: Navbar
           <ChochinLantern kanji="灯" size="sm" sway={false} />
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-display text-lg font-bold tracking-[0.14em] text-[#f3ede8] transition-colors group-hover:text-[#ff4d5e]">
+              <span className="font-display text-base font-bold tracking-[0.14em] text-[#f3ede8] transition-colors group-hover:text-[#ff4d5e] sm:text-lg">
                 AKARI YOKOCHO
               </span>
-              <span className="font-jp hidden border border-red-700/70 bg-red-950/75 px-1.5 py-0.5 text-[11px] font-bold text-red-300 sm:inline-block">
-                赤灯横丁
+              <span className="font-jp hidden border border-red-700/60 bg-red-950/70 px-1.5 py-0.5 text-[10px] font-bold text-red-300 sm:inline-block">
+                赤灯
               </span>
             </div>
-            <p className="font-sans text-[11px] font-medium tracking-[0.08em] text-[#9e9196] uppercase">
-              Phụ Tùng &amp; Quang Học Đêm Nhật Bản
+            <p className="font-sans text-[11px] font-medium tracking-[0.06em] text-zinc-400">
+              Quang học &amp; Phụ tùng ô tô JDM
             </p>
           </div>
         </a>
 
-        <nav className="hidden items-center gap-6 text-sm font-medium text-zinc-200 md:flex">
+        <nav className="hidden items-center gap-6 text-[13px] font-medium text-zinc-200 md:flex">
           <a href="#fitment" className="transition-colors hover:text-[#ff4d5e]">
             Tra Cứu Xe
           </a>

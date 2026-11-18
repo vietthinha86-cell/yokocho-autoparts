@@ -128,37 +128,31 @@ export function HeroAlley() {
         <div className="h-12 w-px bg-gradient-to-b from-[#ff2e43] to-transparent" />
       </div>
 
-      <div className="relative z-10 mx-auto flex max-w-7xl flex-col justify-center px-4 pt-8 pb-12 sm:px-6 lg:px-14 lg:pt-9 lg:pb-16">
+      <div className="relative z-10 mx-auto flex max-w-7xl flex-col justify-center px-4 pt-10 pb-14 sm:px-6 lg:px-14 lg:pt-12 lg:pb-16">
         <div className="max-w-2xl">
-          <div className="chamfer-sm mb-4 inline-flex items-center gap-2.5 border border-red-600/70 bg-[#140508]/92 px-3.5 py-1.5 shadow-[0_0_24px_rgba(225,29,46,0.28)] backdrop-blur-md">
-            <span className="h-2 w-2 animate-ping bg-[#ff2e43] shadow-[0_0_12px_#ff2e43]" />
-            <span className="font-mono text-[11px] font-semibold tracking-[0.14em] text-red-200 uppercase">
-              Kabukicho Midnight Spec
-            </span>
-            <span className="text-red-700">/</span>
-            <span className="font-jp text-[11px] font-bold tracking-[0.18em] text-amber-300">
-              赤灯自動車整備
+          <div className="mb-4 inline-flex items-center gap-2.5 rounded-full border border-red-600/55 bg-[#120508]/85 px-3.5 py-1.5 backdrop-blur-md">
+            <span className="h-1.5 w-1.5 animate-ping rounded-full bg-[#ff2e43] shadow-[0_0_10px_#ff2e43]" />
+            <span className="font-mono text-[10px] font-semibold tracking-[0.22em] text-zinc-200 uppercase">
+              AKARI OPTICS · TOKYO NIGHT SPEC
             </span>
           </div>
 
-          <h1 className="font-display text-3xl leading-[1.08] font-bold tracking-[-0.015em] text-[#f6f1ec] drop-shadow-[0_4px_24px_rgba(0,0,0,0.92)] sm:text-5xl lg:text-[3.35rem]">
+          <h1 className="font-display text-3xl leading-[1.16] font-bold tracking-[-0.02em] text-[#f6f1ec] drop-shadow-[0_4px_24px_rgba(0,0,0,0.92)] sm:text-5xl lg:text-[3.25rem]">
             <span className="block sm:whitespace-nowrap">Ánh Sáng Xuyên Màn Đêm</span>
-            <span className="mt-1.5 block bg-gradient-to-r from-[#ff2e43] via-[#ff6a45] to-amber-300 bg-clip-text text-transparent drop-shadow-[0_0_32px_rgba(255,46,67,0.65)]">
+            <span className="mt-1 block bg-gradient-to-r from-[#ff2e43] via-[#ff6a45] to-amber-300 bg-clip-text text-transparent drop-shadow-[0_0_28px_rgba(255,46,67,0.55)]">
               Phố Đèn Đỏ
             </span>
           </h1>
 
-          <p className="mt-4 max-w-xl border-l-2 border-[#ff2e43] bg-gradient-to-r from-[#130508]/82 to-transparent py-1 pl-4 text-sm leading-relaxed text-zinc-200 sm:text-base">
-            Kho phụ tùng ô tô, đèn{" "}
-            <span className="font-bold text-white">Bi-LED Laser</span>,{" "}
-            <span className="font-bold text-amber-300">Bi-Gầm phá sương 3000K</span> và đồ chơi
-            JDM thuần chất đêm Tokyo. Cắm giắc zin chuẩn OEM — cắt nét mặt đường trong mưa lớn.
+          <p className="mt-4 max-w-xl border-l-2 border-[#ff2e43]/85 pl-4 text-sm leading-relaxed text-zinc-200 sm:text-[15px]">
+            Bi-LED Laser, Bi-Gầm phá sương <span className="font-semibold text-amber-300">3000K</span>{" "}
+            và đồ chơi JDM chuẩn giắc zin OEM — bám đường sắc nét dưới mưa lớn mà không chói xe đối diện.
           </p>
 
-          <div className="mt-6 flex flex-wrap items-center gap-3.5">
+          <div className="mt-7 flex flex-wrap items-center gap-3.5">
             <a
               href="#catalog"
-              className="chamfer-sm font-display group relative inline-flex items-center gap-2.5 bg-gradient-to-r from-[#991b1b] via-[#e11d2e] to-[#ff2e43] px-6 py-3 text-sm font-bold tracking-[0.12em] text-white uppercase shadow-[0_0_36px_rgba(225,29,46,0.65)] transition hover:brightness-115"
+              className="chamfer-sm font-display group relative inline-flex items-center gap-2.5 bg-gradient-to-r from-[#b91c1c] via-[#e11d2e] to-[#ff2e43] px-6 py-3 text-[13px] font-bold tracking-[0.08em] text-white uppercase shadow-[0_0_32px_rgba(225,29,46,0.55)] transition hover:brightness-115"
             >
               <span>Vào Kệ Hàng Đêm</span>
               <ArrowDownRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:translate-y-0.5" />
@@ -166,39 +160,39 @@ export function HeroAlley() {
 
             <a
               href="#simulator"
-              className="chamfer-sm font-display inline-flex items-center gap-2 border border-amber-400/65 bg-[#12080b]/92 px-5 py-3 text-sm font-semibold tracking-wide text-amber-300 shadow-[0_0_24px_rgba(245,158,11,0.18)] backdrop-blur-md transition hover:border-amber-300 hover:bg-amber-950/50 hover:shadow-[0_0_28px_rgba(245,158,11,0.35)]"
+              className="chamfer-sm font-display inline-flex items-center gap-2 border border-amber-400/60 bg-[#12080b]/88 px-5 py-3 text-[13px] font-semibold tracking-wide text-amber-300 backdrop-blur-md transition hover:border-amber-300 hover:bg-amber-950/45"
             >
               <Sparkles className="h-4 w-4" />
-              <span>Thử 2 Tia Đèn Đêm Mưa</span>
+              <span>Thử Tia Đèn Mưa Đêm</span>
             </a>
           </div>
         </div>
 
         {/* Bottom aligned row: 3 Trust Pillars (left) + Optical Alley Cam HUD (right) */}
-        <div className="mt-8 flex flex-col gap-5 border-t border-red-900/55 pt-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="mt-10 flex flex-col gap-5 border-t border-red-900/45 pt-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="grid max-w-2xl flex-1 grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="flex items-start gap-2.5 border-l-2 border-red-600/75 pl-3">
+            <div className="flex items-start gap-2.5 border-l-2 border-red-600/70 pl-3">
               <Wrench className="mt-0.5 h-4 w-4 shrink-0 text-[#ff4d5e]" />
               <div>
-                <p className="font-display text-xs font-bold tracking-wider text-white uppercase">
+                <p className="font-display text-xs font-bold tracking-wide text-white uppercase">
                   Plug &amp; Play Zin 100%
                 </p>
                 <p className="mt-0.5 text-xs text-zinc-300">Không cắt trích dây điện xe</p>
               </div>
             </div>
-            <div className="flex items-start gap-2.5 border-l-2 border-amber-500/75 pl-3">
+            <div className="flex items-start gap-2.5 border-l-2 border-amber-500/70 pl-3">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
               <div>
-                <p className="font-display text-xs font-bold tracking-wider text-white uppercase">
+                <p className="font-display text-xs font-bold tracking-wide text-white uppercase">
                   Bảo Hành 1 Đổi 1
                 </p>
                 <p className="mt-0.5 text-xs text-zinc-300">Tem điện tử tới 36 tháng</p>
               </div>
             </div>
-            <div className="flex items-start gap-2.5 border-l-2 border-red-600/75 pl-3">
+            <div className="flex items-start gap-2.5 border-l-2 border-red-600/70 pl-3">
               <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[#ff4d5e]" />
               <div>
-                <p className="font-display text-xs font-bold tracking-wider text-white uppercase">
+                <p className="font-display text-xs font-bold tracking-wide text-white uppercase">
                   Chuẩn Mặt Cắt Nhật
                 </p>
                 <p className="mt-0.5 text-xs text-zinc-300">Sáng gắt nhưng không chói mắt</p>
@@ -208,14 +202,14 @@ export function HeroAlley() {
 
           <a
             href="#simulator"
-            className="chamfer-sm group hidden items-center gap-3.5 border border-red-500/60 bg-[#0b0407]/88 px-4 py-2.5 backdrop-blur-md transition hover:border-amber-400/80 lg:inline-flex"
+            className="group hidden items-center gap-3 rounded-full border border-red-500/50 bg-[#0b0407]/85 px-4 py-2 backdrop-blur-md transition hover:border-amber-400/75 lg:inline-flex"
           >
-            <span className="h-2 w-2 animate-pulse bg-[#ff2e43] shadow-[0_0_12px_#ff2e43]" />
+            <span className="h-2 w-2 animate-pulse rounded-full bg-[#ff2e43] shadow-[0_0_10px_#ff2e43]" />
             <div className="text-left font-mono text-[11px]">
               <p className="font-bold tracking-wider text-amber-300">
-                OPTIC Z-CUTOFF // ALLEY CAM LIVE
+                ALLEY CAM · LIVE BEAM
               </p>
-              <p className="text-zinc-300">3000K Phá Sương • 6000K Laser 9.800 lm</p>
+              <p className="text-zinc-300">3000K Phá Sương · 6000K Laser</p>
             </div>
             <Eye className="h-4 w-4 text-red-400 transition-transform group-hover:scale-110 group-hover:text-amber-300" />
           </a>

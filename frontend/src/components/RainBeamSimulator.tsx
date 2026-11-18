@@ -165,11 +165,11 @@ export function RainBeamSimulator({
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
-            <p className="flex items-center gap-2 text-xs font-bold tracking-[0.16em] text-[#ff4d5e] uppercase">
-              <span className="font-jp">夜間雨天テスト</span>
-              <span className="font-mono">{"//"} Phòng Thử 2 Luồng Ánh Sáng Live</span>
+            <p className="flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.2em] text-[#ff4d5e] uppercase">
+              <span>PHÒNG THỬ ÁNH SÁNG LIVE</span>
+              <span className="font-jp text-zinc-500">夜間テスト</span>
             </p>
-            <h2 className="font-display mt-1.5 text-2xl font-bold tracking-tight text-[#f3ede8] sm:text-3xl">
+            <h2 className="font-display mt-1.5 text-2xl leading-[1.2] font-bold tracking-[-0.02em] text-[#f3ede8] sm:text-3xl">
               Trải Nghiệm Rọi Đèn Xuyên Con Hẻm Mưa Đêm
             </h2>
           </div>

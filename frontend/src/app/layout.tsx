@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
-import { Be_Vietnam_Pro, Chakra_Petch, JetBrains_Mono, Noto_Sans_JP } from "next/font/google";
+import { Be_Vietnam_Pro, JetBrains_Mono, Lexend, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 
 const beVietnam = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-be-vietnam",
 });
 
-const chakraPetch = Chakra_Petch({
+const lexend = Lexend({
   subsets: ["latin", "vietnamese"],
-  weight: ["500", "600", "700"],
-  variable: "--font-chakra",
+  weight: ["500", "600", "700", "800"],
+  variable: "--font-lexend",
 });
 
 const notoSansJp = Noto_Sans_JP({
-  subsets: ["latin", "vietnamese"],
+  subsets: ["latin"],
   weight: ["500", "700", "900"],
   variable: "--font-noto-jp",
 });
@@ -83,7 +83,7 @@ export default function RootLayout({
   return (
     <html
       lang="vi"
-      className={`${beVietnam.variable} ${chakraPetch.variable} ${notoSansJp.variable} ${jetbrainsMono.variable}`}
+      className={`${beVietnam.variable} ${lexend.variable} ${notoSansJp.variable} ${jetbrainsMono.variable}`}
     >
       <body className="font-sans antialiased selection:bg-[#e11d2e] selection:text-white">
         {children}

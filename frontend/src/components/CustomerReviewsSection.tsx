@@ -172,11 +172,11 @@ export function CustomerReviewsSection({
       {/* Header */}
       <div className="mb-8 flex flex-col justify-between gap-4 border-b border-red-800/45 pb-6 md:flex-row md:items-end">
         <div>
-          <p className="flex items-center gap-2 text-xs font-bold tracking-[0.16em] text-[#ff4d5e] uppercase">
-            <span className="font-jp">実車レビュー</span>
-            <span className="font-mono">{"//"} Ảnh Xe Lắp Thực Tế &amp; Đánh Giá</span>
+          <p className="flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.2em] text-[#ff4d5e] uppercase">
+            <span>ẢNH XE LẮP THỰC TẾ &amp; ĐÁNH GIÁ</span>
+            <span className="font-jp text-zinc-500">実車レビュー</span>
           </p>
-          <h2 className="font-display mt-1.5 text-2xl font-bold tracking-tight text-[#f3ede8] sm:text-3xl">
+          <h2 className="font-display mt-1.5 text-2xl leading-[1.2] font-bold tracking-[-0.02em] text-[#f3ede8] sm:text-3xl">
             {fixedProduct
               ? `Khách Đã Lắp ${fixedProduct.nameVi}`
               : "Khách Hàng Đã Lên Đèn Tại Xưởng"}

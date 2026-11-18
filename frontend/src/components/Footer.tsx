@@ -8,33 +8,36 @@ export function Footer() {
         <div className="flex items-center gap-4">
           <ChochinLantern kanji="灯" size="sm" sway={false} />
           <div>
-            <p className="font-display text-base font-bold tracking-widest text-white">
-              AKARI YOKOCHO <span className="font-jp text-sm text-red-400">{"//"} 赤灯横丁</span>
+            <p className="font-display text-base font-bold tracking-[0.14em] text-white">
+              AKARI YOKOCHO <span className="font-jp ml-1 text-xs text-red-400">赤灯横丁</span>
             </p>
-            <p className="mt-0.5 text-xs text-zinc-400">
-              Phụ tùng ô tô &amp; Quang học JDM phong cách Phố Đèn Đỏ Đêm Nhật Bản.
+            <p className="mt-1 text-[13px] text-zinc-400">
+              Phụ tùng ô tô &amp; quang học tăng sáng JDM chuẩn giắc zin theo xe.
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-6 text-xs text-zinc-400">
-          <Link href="/#fitment" className="hover:text-red-400">
-            Tra cứu theo xe
+        <div className="flex flex-wrap items-center gap-5 text-[13px] text-zinc-400">
+          <Link href="/#fitment" className="transition-colors hover:text-red-400">
+            Tra cứu xe
           </Link>
-          <Link href="/#catalog" className="hover:text-red-400">
-            Kệ hàng đêm
+          <Link href="/#catalog" className="transition-colors hover:text-red-400">
+            Kệ hàng
           </Link>
-          <Link href="/#simulator" className="hover:text-red-400">
+          <Link href="/#simulator" className="transition-colors hover:text-red-400">
             Thử ánh sáng
           </Link>
-          <Link href="/#builds" className="hover:text-red-400">
-            Xe lên đèn
+          <Link href="/#reviews" className="transition-colors hover:text-red-400">
+            Đánh giá
           </Link>
-          <Link href="/#order-lookup" className="hover:text-red-400">
+          <Link href="/#order-lookup" className="transition-colors hover:text-red-400">
             Tra cứu đơn
           </Link>
-          <Link href="/admin" className="font-semibold text-amber-300 hover:text-white">
-            Quản trị (/admin)
+          <Link href="/tai-khoan" className="font-medium text-zinc-200 transition-colors hover:text-amber-300">
+            Tài khoản
+          </Link>
+          <Link href="/admin/login" className="text-xs text-zinc-600 transition-colors hover:text-zinc-400">
+            Nội bộ
           </Link>
         </div>
       </div>

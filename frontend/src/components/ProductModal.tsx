@@ -88,9 +88,9 @@ export function ProductModal({ product, onClose, onAddToCart }: ProductModalProp
 
             {/* Spec Table */}
             <div className="mt-5 border border-red-900/45 bg-[#080305] p-3.5 text-xs">
-              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold tracking-wider text-red-400 uppercase">
-                <span className="font-jp">仕様書</span>
-                <span className="font-mono">{"//"} Bảng Thông Số Kỹ Thuật</span>
+              <p className="mb-2 flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.18em] text-red-400 uppercase">
+                <span>BẢNG THÔNG SỐ KỸ THUẬT</span>
+                <span className="font-jp text-zinc-500">仕様書</span>
               </p>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
                 {product.specs.wattage && (
