@@ -1,6 +1,8 @@
 "use client";
 
-import { Bot, ShoppingBag, Sparkles, Wifi, WifiOff } from "lucide-react";
+import { Bot, ShoppingBag, Sparkles, User, UserCheck, Wifi, WifiOff } from "lucide-react";
+import Link from "next/link";
+import { useCustomerSession } from "@/lib/useCustomerSession";
 import { ChochinLantern } from "./ChochinLantern";
 
 interface NavbarProps {
@@ -11,6 +13,8 @@ interface NavbarProps {
 }
 
 export function Navbar({ cartCount, apiConnected, onOpenCart, onOpenAi }: NavbarProps) {
+  const { customer } = useCustomerSession();
+
   return (
     <header className="sticky top-0 z-40 border-b border-red-800/45 bg-[#060305]/88 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
@@ -76,6 +80,25 @@ export function Navbar({ cartCount, apiConnected, onOpenCart, onOpenAi }: Navbar
               <Bot className="h-3.5 w-3.5 text-amber-300" />
               <span>AI Thợ Đêm</span>
             </button>
+          )}
+
+          {customer ? (
+            <Link
+              href="/tai-khoan"
+              className="chamfer-sm inline-flex items-center gap-1.5 border border-emerald-600/60 bg-emerald-950/35 px-3 py-2 text-xs font-bold text-emerald-200 transition hover:border-emerald-400 hover:text-white"
+              title={`Tài khoản ${customer.fullName}`}
+            >
+              <UserCheck className="h-3.5 w-3.5 text-emerald-300" />
+              <span className="max-w-24 truncate">{customer.fullName}</span>
+            </Link>
+          ) : (
+            <Link
+              href="/dang-nhap"
+              className="chamfer-sm inline-flex items-center gap-1.5 border border-red-900/60 bg-[#14070b] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-red-400 hover:text-white"
+            >
+              <User className="h-3.5 w-3.5 text-[#ff4d5e]" />
+              <span className="hidden sm:inline">Đăng Nhập</span>
+            </Link>
           )}
 
           <button

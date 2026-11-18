@@ -1,8 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   ArrowDownRight,
+  CarFront,
   Check,
   CheckCircle2,
   Copy,
@@ -12,11 +14,13 @@ import {
   ShoppingBag,
   Trash2,
   Truck,
+  UserCheck,
   X,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { useMemo, useState } from "react";
 import { formatVnd, submitOrder } from "@/lib/api";
+import { useCustomerSession } from "@/lib/useCustomerSession";
 import type { CartItem, OrderRecord } from "@/types/autoparts";
 
 interface CartDrawerProps {
@@ -81,15 +85,24 @@ export function CartDrawer({
   onOrderCreated,
   onJumpToLookup,
 }: CartDrawerProps) {
-  const [customerName, setCustomerName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [vehicleInfo, setVehicleInfo] = useState("");
-  const [shippingAddress, setShippingAddress] = useState("");
+  const { customer, reloadSession } = useCustomerSession();
+  const [draftName, setDraftName] = useState<string | null>(null);
+  const [draftPhone, setDraftPhone] = useState<string | null>(null);
+  const [draftVehicle, setDraftVehicle] = useState<string | null>(null);
+  const [draftAddress, setDraftAddress] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successOrder, setSuccessOrder] = useState<OrderRecord | null>(null);
   const [copiedField, setCopiedField] = useState<"account" | "memo" | null>(null);
+
+  const defaultVehicle = customer?.garageVehicles?.[0]
+    ? `${customer.garageVehicles[0].make} ${customer.garageVehicles[0].model} ${customer.garageVehicles[0].year}`.trim()
+    : "";
+  const effectiveCustomerName = draftName ?? customer?.fullName ?? "";
+  const effectivePhone = draftPhone ?? customer?.phone ?? "";
+  const effectiveVehicleInfo = draftVehicle ?? defaultVehicle;
+  const effectiveShippingAddress = draftAddress ?? customer?.shippingAddress ?? "";
 
   const qrSvg = useMemo(() => {
     if (!successOrder) return null;
@@ -135,10 +148,10 @@ export function CartDrawer({
     setError(null);
     setSubmitting(true);
     const result = await submitOrder({
-      customerName,
-      phone,
-      vehicleInfo,
-      shippingAddress,
+      customerName: effectiveCustomerName,
+      phone: effectivePhone,
+      vehicleInfo: effectiveVehicleInfo,
+      shippingAddress: effectiveShippingAddress,
       note: note || undefined,
       items: items.map((i) => ({
         productId: i.product.id,
@@ -156,6 +169,9 @@ export function CartDrawer({
     setSuccessOrder(result.order);
     onOrderCreated(result.order);
     onClearCart();
+    if (customer) {
+      reloadSession();
+    }
   }
 
   return (
@@ -404,34 +420,85 @@ export function CartDrawer({
                   Thông Tin Giao Hàng &amp; Xác Nhận Chân Giắc
                 </p>
 
+                {customer ? (
+                  <div className="border border-emerald-700/60 bg-emerald-950/30 p-2.5 text-[11px] text-emerald-200">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-1.5 font-semibold">
+                        <UserCheck className="h-3.5 w-3.5 text-emerald-300" />
+                        Tự điền theo TK {customer.fullName}
+                      </span>
+                      <Link
+                        href="/tai-khoan"
+                        onClick={onClose}
+                        className="font-mono text-[10px] text-amber-300 underline"
+                      >
+                        Quản lý
+                      </Link>
+                    </div>
+                    {customer.garageVehicles.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {customer.garageVehicles.map((v) => {
+                          const label = `${v.make} ${v.model} ${v.year}`.trim();
+                          return (
+                            <button
+                              key={v.id}
+                              type="button"
+                              onClick={() => setDraftVehicle(label)}
+                              className={`inline-flex cursor-pointer items-center gap-1 border px-2 py-0.5 font-mono text-[10px] transition ${
+                                effectiveVehicleInfo === label
+                                  ? "border-amber-400 bg-amber-500/20 text-amber-200"
+                                  : "border-emerald-800/60 bg-black/50 text-zinc-300 hover:border-amber-400"
+                              }`}
+                            >
+                              <CarFront className="h-3 w-3" />
+                              <span>{label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-between gap-2 border border-red-900/50 bg-[#12070b] px-3 py-2 text-[11px] text-zinc-300">
+                    <span>Mua nhanh không cần tài khoản</span>
+                    <Link
+                      href="/dang-nhap?next=/"
+                      onClick={onClose}
+                      className="font-bold text-amber-300 hover:underline"
+                    >
+                      Đăng nhập tự điền →
+                    </Link>
+                  </div>
+                )}
+
                 <input
                   required
                   type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
+                  value={effectiveCustomerName}
+                  onChange={(e) => setDraftName(e.target.value)}
                   placeholder="Họ và tên người nhận *"
                   className="w-full border border-red-900/55 bg-[#14090e] px-3.5 py-2.5 text-xs text-white placeholder:text-zinc-500 focus:border-[#ff2e43] focus:outline-none"
                 />
                 <input
                   required
                   type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  value={effectivePhone}
+                  onChange={(e) => setDraftPhone(e.target.value)}
                   placeholder="Số điện thoại (Zalo) *"
                   className="w-full border border-red-900/55 bg-[#14090e] px-3.5 py-2.5 text-xs text-white placeholder:text-zinc-500 focus:border-[#ff2e43] focus:outline-none"
                 />
                 <input
                   type="text"
-                  value={vehicleInfo}
-                  onChange={(e) => setVehicleInfo(e.target.value)}
+                  value={effectiveVehicleInfo}
+                  onChange={(e) => setDraftVehicle(e.target.value)}
                   placeholder="Dòng xe & đời xe (VD: Honda Civic 2022)"
                   className="w-full border border-red-900/55 bg-[#14090e] px-3.5 py-2.5 text-xs text-white placeholder:text-zinc-500 focus:border-[#ff2e43] focus:outline-none"
                 />
                 <input
                   required
                   type="text"
-                  value={shippingAddress}
-                  onChange={(e) => setShippingAddress(e.target.value)}
+                  value={effectiveShippingAddress}
+                  onChange={(e) => setDraftAddress(e.target.value)}
                   placeholder="Địa chỉ nhận hàng *"
                   className="w-full border border-red-900/55 bg-[#14090e] px-3.5 py-2.5 text-xs text-white placeholder:text-zinc-500 focus:border-[#ff2e43] focus:outline-none"
                 />

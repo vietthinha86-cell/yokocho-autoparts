@@ -519,9 +519,20 @@ export async function submitOrder(payload: {
   items: Array<{ productId: string; quantity: number; selectedKelvin?: string }>;
 }): Promise<{ ok: boolean; order?: OrderRecord; error?: string }> {
   try {
+    let token: string | null = null;
+    if (typeof window !== "undefined") {
+      try {
+        token = window.localStorage.getItem("akari_customer_token_v1");
+      } catch {
+        token = null;
+      }
+    }
     const res = await fetch(`${API_BASE_URL}/api/orders`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(payload),
     });
     const data = (await res.json()) as { item?: OrderRecord; error?: string };
@@ -641,9 +652,20 @@ export async function submitCustomerReview(payload: {
   photoUrl?: string;
 }): Promise<{ ok: boolean; item?: ProductReviewRecord; error?: string }> {
   try {
+    let token: string | null = null;
+    if (typeof window !== "undefined") {
+      try {
+        token = window.localStorage.getItem("akari_customer_token_v1");
+      } catch {
+        token = null;
+      }
+    }
     const res = await fetch(`${API_BASE_URL}/api/reviews`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(payload),
     });
     const data = (await res.json()) as { item?: ProductReviewRecord; error?: string };

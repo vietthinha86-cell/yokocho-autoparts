@@ -9,7 +9,7 @@ import {
   Truck,
   Wrench,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatVnd, lookupOrder } from "@/lib/api";
 import type { OrderRecord } from "@/types/autoparts";
 
@@ -53,6 +53,21 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState<OrderRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!lastOrderCode?.trim()) return;
+    let cancelled = false;
+    lookupOrder(lastOrderCode).then((res) => {
+      if (cancelled) return;
+      if (res.ok && res.order) {
+        setOrder(res.order);
+        setError(null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [lastOrderCode]);
 
   async function performLookup(targetCode: string) {
     if (!targetCode.trim()) return;

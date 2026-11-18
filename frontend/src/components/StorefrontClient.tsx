@@ -39,6 +39,8 @@ interface StorefrontClientProps {
   initialFitments: VehicleFitment[];
   initialCombos: VehicleBuildCombo[];
   initialReviews?: ProductReviewRecord[];
+  initialMake?: string;
+  initialLookupCode?: string;
   apiConnected: boolean;
 }
 
@@ -74,10 +76,12 @@ export function StorefrontClient({
   initialFitments,
   initialCombos,
   initialReviews = FALLBACK_REVIEWS,
+  initialMake = "",
+  initialLookupCode,
   apiConnected,
 }: StorefrontClientProps) {
   const [selectedCategory, setSelectedCategory] = useState<"all" | PartCategory>("all");
-  const [selectedMake, setSelectedMake] = useState("");
+  const [selectedMake, setSelectedMake] = useState(initialMake);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedKelvin, setSelectedKelvin] = useState("all");
   const [priceRange, setPriceRange] = useState<"all" | "under_2m" | "2m_5m" | "over_5m">("all");
@@ -88,7 +92,7 @@ export function StorefrontClient({
   const [cartOpen, setCartOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [beamMode, setBeamMode] = useState<RainBeamColorMode>("combo");
-  const [lastOrderCode, setLastOrderCode] = useState<string | undefined>(undefined);
+  const [lastOrderCode, setLastOrderCode] = useState<string | undefined>(initialLookupCode);
 
   const cart = usePersistentCart();
 

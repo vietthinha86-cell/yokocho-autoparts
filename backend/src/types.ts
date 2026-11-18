@@ -74,6 +74,7 @@ export interface OrderItemRecord extends OrderItemInput {
 
 export interface OrderRecord {
   orderCode: string;
+  customerId?: string;
   customerName: string;
   phone: string;
   vehicleInfo: string;
@@ -87,6 +88,26 @@ export interface OrderRecord {
   paymentRef?: string;
   status: "pending_confirm" | "packed" | "shipping" | "completed";
   createdAt: string;
+}
+
+export interface CustomerGarageVehicle {
+  id: string;
+  make: string;
+  model: string;
+  year: string;
+  nickname?: string;
+  note?: string;
+}
+
+export interface CustomerProfileRecord {
+  id: string;
+  fullName: string;
+  phone?: string;
+  email?: string;
+  shippingAddress?: string;
+  garageVehicles: CustomerGarageVehicle[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AdminUserRecord {
@@ -115,6 +136,7 @@ export type BeamModeChoice = "3000k" | "4300k" | "6000k" | "combo";
 export interface ProductReviewRecord {
   id: string;
   productId: string;
+  customerId?: string;
   customerName: string;
   vehicleInfo: string;
   rating: number;

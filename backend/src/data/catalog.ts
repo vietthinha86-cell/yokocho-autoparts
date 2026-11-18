@@ -1,5 +1,7 @@
 import type {
   AutoPartProduct,
+  CustomerGarageVehicle,
+  OrderRecord,
   ProductReviewRecord,
   VehicleBuildCombo,
   VehicleFitment,
@@ -429,5 +431,64 @@ export const DEFAULT_PRODUCT_REVIEWS: ProductReviewRecord[] = [
     verifiedPurchase: false,
     status: "pending",
     createdAt: "2026-11-14T10:30:00.000Z",
+  },
+];
+
+export const DEFAULT_DEMO_CUSTOMER_SEED: {
+  id: string;
+  fullName: string;
+  phone: string;
+  email: string;
+  shippingAddress: string;
+  defaultPassword: string;
+  garageVehicles: CustomerGarageVehicle[];
+  createdAt: string;
+} = {
+  id: "cust-demo-minhquan",
+  fullName: "Minh Quân",
+  phone: "0909888777",
+  email: "khachhang@akari.vn",
+  shippingAddress: "245 Điện Biên Phủ, P.15, Bình Thạnh, TP.HCM",
+  defaultPassword: process.env.DEMO_CUSTOMER_PASSWORD?.trim() || "yokocho2026",
+  garageVehicles: [
+    {
+      id: "veh-civic-2023",
+      make: "Honda",
+      model: "Civic RS Turbo",
+      year: "2023",
+      nickname: "Civic Đêm Kyoto",
+      note: "Chân cos Bi-LED Yami-R V9 6000K + gầm 3000K",
+    },
+  ],
+  createdAt: "2026-11-12T10:00:00.000Z",
+};
+
+export const DEFAULT_DEMO_ORDERS: OrderRecord[] = [
+  {
+    orderCode: "YKC-DEMO-01",
+    customerId: "cust-demo-minhquan",
+    customerName: "Minh Quân",
+    phone: "0909888777",
+    vehicleInfo: "Honda Civic RS Turbo 2023",
+    shippingAddress: "245 Điện Biên Phủ, P.15, Bình Thạnh, TP.HCM",
+    note: "Kèm bộ giắc zin Civic 2023 không cắt dây",
+    items: [
+      {
+        productId: "akari-biled-yami-v9",
+        sku: "AKR-YM-V9",
+        nameVi: "Cụm Bi-LED Yami-R V9 Tokyo Night (65W Laser)",
+        quantity: 1,
+        selectedKelvin: "6000K",
+        unitPriceVnd: 5850000,
+        lineTotalVnd: 5850000,
+      },
+    ],
+    subtotalVnd: 5850000,
+    shippingFeeVnd: 0,
+    totalVnd: 5850000,
+    paymentStatus: "paid",
+    paymentRef: "VIETQR-DEMO-01",
+    status: "completed",
+    createdAt: "2026-11-12T11:30:00.000Z",
   },
 ];

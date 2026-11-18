@@ -76,6 +76,7 @@ export interface OrderItemRecord {
 
 export interface OrderRecord {
   orderCode: string;
+  customerId?: string;
   customerName: string;
   phone: string;
   vehicleInfo: string;
@@ -89,6 +90,26 @@ export interface OrderRecord {
   paymentRef?: string;
   status: "pending_confirm" | "packed" | "shipping" | "completed";
   createdAt: string;
+}
+
+export interface CustomerGarageVehicle {
+  id: string;
+  make: string;
+  model: string;
+  year: string;
+  nickname?: string;
+  note?: string;
+}
+
+export interface CustomerProfile {
+  id: string;
+  fullName: string;
+  phone?: string;
+  email?: string;
+  shippingAddress?: string;
+  garageVehicles: CustomerGarageVehicle[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AdminProfile {
@@ -109,6 +130,7 @@ export interface AdminOverviewResponse {
     totalRevenueVnd: number;
     pendingReviews?: number;
     approvedReviews?: number;
+    totalCustomers?: number;
   };
   recentNotifications: Array<{
     channel: string;
@@ -198,6 +220,7 @@ export type BeamModeChoice = "3000k" | "4300k" | "6000k" | "combo";
 export interface ProductReviewRecord {
   id: string;
   productId: string;
+  customerId?: string;
   customerName: string;
   vehicleInfo: string;
   rating: number;

@@ -1,8 +1,11 @@
 import { Prisma, PrismaClient } from "@prisma/client";
+import { normalizeEmail, normalizePhone } from "../auth/adminAuth.ts";
 import type {
   AdminUserRecord,
   AutoPartProduct,
   BeamModeChoice,
+  CustomerGarageVehicle,
+  CustomerProfileRecord,
   InventoryLogRecord,
   OrderRecord,
   PartCategory,
@@ -13,16 +16,40 @@ import type {
   VehicleBuildCombo,
   VehicleFitment,
 } from "../types.ts";
-import type { GarageRepository, StoredAdminAccount } from "./repository.ts";
+import {
+  toPublicCustomer,
+  type GarageRepository,
+  type StoredAdminAccount,
+  type StoredCustomerAccount,
+} from "./repository.ts";
 
 type PrismaProductRow = Awaited<ReturnType<PrismaClient["product"]["findMany"]>>[number];
 type PrismaOrderWithItems = Prisma.OrderGetPayload<{ include: { items: true } }>;
 type PrismaReviewRow = Awaited<ReturnType<PrismaClient["productReview"]["findMany"]>>[number];
+type PrismaCustomerRow = Awaited<ReturnType<PrismaClient["customerUser"]["findMany"]>>[number];
+
+function mapCustomer(row: PrismaCustomerRow): StoredCustomerAccount {
+  const vehicles = Array.isArray(row.garageVehiclesJson)
+    ? ((row.garageVehiclesJson as unknown) as CustomerGarageVehicle[])
+    : [];
+  return {
+    id: row.id,
+    fullName: row.fullName,
+    phone: row.phone ?? undefined,
+    email: row.email ?? undefined,
+    passwordHash: row.passwordHash,
+    shippingAddress: row.shippingAddress ?? undefined,
+    garageVehicles: vehicles,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
 
 function mapReview(row: PrismaReviewRow): ProductReviewRecord {
   return {
     id: row.id,
     productId: row.productId,
+    customerId: row.customerId ?? undefined,
     customerName: row.customerName,
     vehicleInfo: row.vehicleInfo,
     rating: row.rating,
@@ -66,6 +93,7 @@ function mapProduct(row: PrismaProductRow): AutoPartProduct {
 function mapOrder(row: PrismaOrderWithItems): OrderRecord {
   return {
     orderCode: row.orderCode,
+    customerId: row.customerId ?? undefined,
     customerName: row.customerName,
     phone: row.phone,
     vehicleInfo: row.vehicleInfo,
@@ -259,6 +287,24 @@ export class PrismaRepository implements GarageRepository {
     return rows.map(mapOrder);
   }
 
+  async listOrdersByCustomer(
+    customerId: string,
+    phone?: string,
+  ): Promise<OrderRecord[]> {
+    const normalizedPhone = phone ? normalizePhone(phone) : "";
+    const orClauses: Prisma.OrderWhereInput[] = [{ customerId }];
+    if (normalizedPhone) {
+      orClauses.push({ phone: normalizedPhone });
+    }
+    const rows = await this.prisma.order.findMany({
+      where: { OR: orClauses },
+      include: { items: true },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+    return rows.map(mapOrder);
+  }
+
   async findOrderByCode(orderCode: string): Promise<OrderRecord | null> {
     const row = await this.prisma.order.findFirst({
       where: {
@@ -276,6 +322,7 @@ export class PrismaRepository implements GarageRepository {
     const created = await this.prisma.order.create({
       data: {
         orderCode: order.orderCode,
+        customerId: order.customerId ?? null,
         customerName: order.customerName,
         phone: order.phone,
         vehicleInfo: order.vehicleInfo,
@@ -409,6 +456,7 @@ export class PrismaRepository implements GarageRepository {
       data: {
         id: review.id,
         productId: review.productId,
+        customerId: review.customerId ?? null,
         customerName: review.customerName,
         vehicleInfo: review.vehicleInfo,
         rating: review.rating,
@@ -448,6 +496,82 @@ export class PrismaRepository implements GarageRepository {
     if (!existing) return false;
     await this.prisma.productReview.delete({ where: { id } });
     return true;
+  }
+
+  async countCustomers(): Promise<number> {
+    return this.prisma.customerUser.count();
+  }
+
+  async findCustomerByIdentifier(
+    identifier: string,
+  ): Promise<StoredCustomerAccount | null> {
+    const emailNorm = normalizeEmail(identifier);
+    const phoneNorm = normalizePhone(identifier);
+    const orClauses: Prisma.CustomerUserWhereInput[] = [];
+    if (emailNorm.includes("@")) {
+      orClauses.push({ email: { equals: emailNorm, mode: "insensitive" } });
+    }
+    if (phoneNorm) {
+      orClauses.push({ phone: phoneNorm });
+    }
+    if (orClauses.length === 0) return null;
+    const row = await this.prisma.customerUser.findFirst({
+      where: { OR: orClauses },
+    });
+    return row ? mapCustomer(row) : null;
+  }
+
+  async findCustomerById(id: string): Promise<StoredCustomerAccount | null> {
+    const row = await this.prisma.customerUser.findUnique({ where: { id } });
+    return row ? mapCustomer(row) : null;
+  }
+
+  async createCustomer(account: StoredCustomerAccount): Promise<CustomerProfileRecord> {
+    const row = await this.prisma.customerUser.create({
+      data: {
+        id: account.id,
+        fullName: account.fullName,
+        phone: account.phone ?? null,
+        email: account.email ?? null,
+        passwordHash: account.passwordHash,
+        shippingAddress: account.shippingAddress ?? null,
+        garageVehiclesJson: (account.garageVehicles as unknown) as Prisma.InputJsonValue,
+      },
+    });
+    return toPublicCustomer(mapCustomer(row));
+  }
+
+  async updateCustomer(
+    id: string,
+    patch: {
+      fullName?: string;
+      phone?: string | null;
+      email?: string | null;
+      shippingAddress?: string | null;
+      passwordHash?: string;
+      garageVehicles?: CustomerGarageVehicle[];
+    },
+  ): Promise<CustomerProfileRecord | null> {
+    const existing = await this.prisma.customerUser.findUnique({ where: { id } });
+    if (!existing) return null;
+    const row = await this.prisma.customerUser.update({
+      where: { id },
+      data: {
+        fullName: patch.fullName ?? existing.fullName,
+        phone: patch.phone !== undefined ? patch.phone : existing.phone,
+        email: patch.email !== undefined ? patch.email : existing.email,
+        shippingAddress:
+          patch.shippingAddress !== undefined
+            ? patch.shippingAddress
+            : existing.shippingAddress,
+        passwordHash: patch.passwordHash ?? existing.passwordHash,
+        garageVehiclesJson:
+          patch.garageVehicles !== undefined
+            ? ((patch.garageVehicles as unknown) as Prisma.InputJsonValue)
+            : (existing.garageVehiclesJson as Prisma.InputJsonValue),
+      },
+    });
+    return toPublicCustomer(mapCustomer(row));
   }
 
   async close(): Promise<void> {

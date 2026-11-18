@@ -2,6 +2,8 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import {
   AUTO_PARTS_CATALOG,
+  DEFAULT_DEMO_CUSTOMER_SEED,
+  DEFAULT_DEMO_ORDERS,
   DEFAULT_PRODUCT_REVIEWS,
   VEHICLE_COMBOS,
   VEHICLE_FITMENTS,
@@ -135,6 +137,7 @@ async function main() {
       create: {
         id: rev.id,
         productId: rev.productId,
+        customerId: rev.customerId ?? null,
         customerName: rev.customerName,
         vehicleInfo: rev.vehicleInfo,
         rating: rev.rating,
@@ -151,8 +154,57 @@ async function main() {
     });
   }
 
+  const demoCustHash = bcrypt.hashSync(DEFAULT_DEMO_CUSTOMER_SEED.defaultPassword, 10);
+  await prisma.customerUser.upsert({
+    where: { id: DEFAULT_DEMO_CUSTOMER_SEED.id },
+    update: {},
+    create: {
+      id: DEFAULT_DEMO_CUSTOMER_SEED.id,
+      fullName: DEFAULT_DEMO_CUSTOMER_SEED.fullName,
+      phone: DEFAULT_DEMO_CUSTOMER_SEED.phone,
+      email: DEFAULT_DEMO_CUSTOMER_SEED.email,
+      passwordHash: demoCustHash,
+      shippingAddress: DEFAULT_DEMO_CUSTOMER_SEED.shippingAddress,
+      garageVehiclesJson: (DEFAULT_DEMO_CUSTOMER_SEED.garageVehicles as unknown) as Prisma.InputJsonValue,
+    },
+  });
+
+  for (const demoOrder of DEFAULT_DEMO_ORDERS) {
+    await prisma.order.upsert({
+      where: { orderCode: demoOrder.orderCode },
+      update: {},
+      create: {
+        orderCode: demoOrder.orderCode,
+        customerId: demoOrder.customerId ?? null,
+        customerName: demoOrder.customerName,
+        phone: demoOrder.phone,
+        vehicleInfo: demoOrder.vehicleInfo,
+        shippingAddress: demoOrder.shippingAddress,
+        note: demoOrder.note ?? null,
+        subtotalVnd: demoOrder.subtotalVnd,
+        shippingFeeVnd: demoOrder.shippingFeeVnd,
+        totalVnd: demoOrder.totalVnd,
+        paymentStatus: demoOrder.paymentStatus ?? "unpaid",
+        paymentRef: demoOrder.paymentRef ?? null,
+        status: demoOrder.status,
+        createdAt: new Date(demoOrder.createdAt),
+        items: {
+          create: demoOrder.items.map((item) => ({
+            productId: item.productId,
+            sku: item.sku,
+            nameVi: item.nameVi,
+            quantity: item.quantity,
+            selectedKelvin: item.selectedKelvin ?? null,
+            unitPriceVnd: item.unitPriceVnd,
+            lineTotalVnd: item.lineTotalVnd,
+          })),
+        },
+      },
+    });
+  }
+
   console.log(
-    `==> Seeded ${AUTO_PARTS_CATALOG.length} products, ${VEHICLE_FITMENTS.length} fitments, ${VEHICLE_COMBOS.length} combos, ${DEFAULT_PRODUCT_REVIEWS.length} reviews, and admin '${adminUsername}'.`,
+    `==> Seeded ${AUTO_PARTS_CATALOG.length} products, ${VEHICLE_FITMENTS.length} fitments, ${VEHICLE_COMBOS.length} combos, ${DEFAULT_PRODUCT_REVIEWS.length} reviews, demo customer, and admin '${adminUsername}'.`,
   );
 }
 

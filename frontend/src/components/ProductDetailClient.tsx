@@ -13,11 +13,14 @@ import {
   ShieldCheck,
   ShoppingBag,
   Sparkles,
+  User,
+  UserCheck,
   Wrench,
   Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { formatVnd } from "@/lib/api";
+import { useCustomerSession } from "@/lib/useCustomerSession";
 import {
   addProductsToStoredCart,
   clearStoredCart,
@@ -72,6 +75,7 @@ export function ProductDetailClient({
 }: ProductDetailClientProps) {
   const router = useRouter();
   const cart = usePersistentCart();
+  const { customer } = useCustomerSession();
   const kelvinOptions = product.specs.kelvin ?? ["Tiêu chuẩn"];
   const [selectedKelvin, setSelectedKelvin] = useState(kelvinOptions[0] ?? "Tiêu chuẩn");
   const [quantity, setQuantity] = useState(1);
@@ -142,6 +146,23 @@ export function ProductDetailClient({
               <span className="h-1.5 w-1.5 rounded-full bg-current" />
               {apiConnected ? "API LIVE" : "OFFLINE CACHE"}
             </span>
+            {customer ? (
+              <Link
+                href="/tai-khoan"
+                className="chamfer-sm inline-flex items-center gap-1.5 border border-emerald-600/60 bg-emerald-950/35 px-3 py-2 text-xs font-bold text-emerald-200 hover:border-emerald-400"
+              >
+                <UserCheck className="h-3.5 w-3.5 text-emerald-300" />
+                <span className="max-w-24 truncate">{customer.fullName}</span>
+              </Link>
+            ) : (
+              <Link
+                href={`/dang-nhap?next=${encodeURIComponent(`/san-pham/${product.slug}`)}`}
+                className="chamfer-sm inline-flex items-center gap-1.5 border border-red-900/60 bg-[#14070b] px-3 py-2 text-xs font-semibold text-zinc-200 hover:border-red-400 hover:text-white"
+              >
+                <User className="h-3.5 w-3.5 text-[#ff4d5e]" />
+                <span className="hidden sm:inline">Đăng Nhập</span>
+              </Link>
+            )}
             <button
               type="button"
               onClick={() => setCartOpen(true)}

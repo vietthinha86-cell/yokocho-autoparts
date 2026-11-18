@@ -1,6 +1,8 @@
 import type {
   AdminUserRecord,
   AutoPartProduct,
+  CustomerGarageVehicle,
+  CustomerProfileRecord,
   InventoryLogRecord,
   OrderRecord,
   ProductReviewRecord,
@@ -11,6 +13,16 @@ import type {
 
 export interface StoredAdminAccount extends AdminUserRecord {
   passwordHash: string;
+}
+
+export interface StoredCustomerAccount extends CustomerProfileRecord {
+  passwordHash: string;
+}
+
+export function toPublicCustomer(account: StoredCustomerAccount): CustomerProfileRecord {
+  const { passwordHash: _ignored, ...safe } = account;
+  void _ignored;
+  return safe;
 }
 
 export interface GarageRepository {
@@ -28,6 +40,7 @@ export interface GarageRepository {
   ): Promise<AutoPartProduct | null>;
   deleteProduct(id: string): Promise<boolean>;
   listOrders(limit?: number): Promise<OrderRecord[]>;
+  listOrdersByCustomer(customerId: string, phone?: string): Promise<OrderRecord[]>;
   findOrderByCode(orderCode: string): Promise<OrderRecord | null>;
   createOrder(order: OrderRecord): Promise<OrderRecord>;
   updateOrderStatus(
@@ -42,6 +55,21 @@ export interface GarageRepository {
     displayName: string,
     role?: string,
   ): Promise<AdminUserRecord>;
+  countCustomers(): Promise<number>;
+  findCustomerByIdentifier(identifier: string): Promise<StoredCustomerAccount | null>;
+  findCustomerById(id: string): Promise<StoredCustomerAccount | null>;
+  createCustomer(account: StoredCustomerAccount): Promise<CustomerProfileRecord>;
+  updateCustomer(
+    id: string,
+    patch: {
+      fullName?: string;
+      phone?: string | null;
+      email?: string | null;
+      shippingAddress?: string | null;
+      passwordHash?: string;
+      garageVehicles?: CustomerGarageVehicle[];
+    },
+  ): Promise<CustomerProfileRecord | null>;
   listInventoryLogs(limit?: number): Promise<InventoryLogRecord[]>;
   listReviews(filter?: {
     productId?: string;

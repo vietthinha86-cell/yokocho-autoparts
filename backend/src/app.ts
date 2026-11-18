@@ -15,7 +15,13 @@ import {
 import { maskSecret, upsertEnvVars } from "./envLoader.ts";
 import {
   createRequireAdminAuth,
+  createRequireCustomerAuth,
+  extractOptionalCustomer,
+  hashPassword,
+  normalizeEmail,
+  normalizePhone,
   signAdminToken,
+  signCustomerToken,
   verifyPassword,
 } from "./auth/adminAuth.ts";
 import { createSignedMediaUpload } from "./integrations/mediaSigner.ts";
@@ -26,10 +32,11 @@ import {
 } from "./integrations/notifications.ts";
 import { JsonRepository } from "./store/jsonRepository.ts";
 import { PrismaRepository } from "./store/prismaRepository.ts";
-import type { GarageRepository } from "./store/repository.ts";
+import { toPublicCustomer, type GarageRepository } from "./store/repository.ts";
 import type {
   AutoPartProduct,
   BeamModeChoice,
+  CustomerGarageVehicle,
   OrderItemInput,
   OrderItemRecord,
   OrderRecord,
@@ -91,6 +98,43 @@ function readParam(val: string | string[] | undefined): string {
   return val ?? "";
 }
 
+function sanitizeGarageVehicle(raw: unknown): CustomerGarageVehicle | null {
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  const make = typeof obj.make === "string" ? obj.make.trim().slice(0, 40) : "";
+  const model = typeof obj.model === "string" ? obj.model.trim().slice(0, 60) : "";
+  const year = typeof obj.year === "string" ? obj.year.trim().slice(0, 16) : "";
+  if (!make || !model) return null;
+  return {
+    id:
+      typeof obj.id === "string" && obj.id.trim()
+        ? obj.id.trim().slice(0, 48)
+        : `veh-${crypto.randomUUID().slice(0, 8)}`,
+    make,
+    model,
+    year: year || "Mọi đời",
+    nickname:
+      typeof obj.nickname === "string" && obj.nickname.trim()
+        ? obj.nickname.trim().slice(0, 60)
+        : undefined,
+    note:
+      typeof obj.note === "string" && obj.note.trim()
+        ? obj.note.trim().slice(0, 160)
+        : undefined,
+  };
+}
+
+function sanitizeGarageList(raw: unknown): CustomerGarageVehicle[] {
+  if (!Array.isArray(raw)) return [];
+  const items: CustomerGarageVehicle[] = [];
+  for (const entry of raw) {
+    const clean = sanitizeGarageVehicle(entry);
+    if (clean) items.push(clean);
+    if (items.length >= 10) break;
+  }
+  return items;
+}
+
 export function createApp(options: AppOptions = {}) {
   const app = express();
 
@@ -107,6 +151,7 @@ export function createApp(options: AppOptions = {}) {
   }
 
   const requireAdmin = createRequireAdminAuth(options.jwtSecret);
+  const requireCustomer = createRequireCustomerAuth(options.jwtSecret);
   const notifier = new NotificationDispatcher();
 
   app.use(cors());
@@ -288,8 +333,10 @@ export function createApp(options: AppOptions = {}) {
       );
       const shippingFeeVnd =
         subtotalVnd >= FREE_SHIPPING_THRESHOLD_VND ? 0 : STANDARD_SHIPPING_FEE_VND;
+      const optionalCustomer = extractOptionalCustomer(req, options.jwtSecret);
       const order: OrderRecord = {
         orderCode: generateOrderCode(),
+        customerId: optionalCustomer?.sub,
         customerName,
         phone,
         vehicleInfo: vehicleInfo || "Chưa cung cấp dòng xe",
@@ -404,10 +451,12 @@ export function createApp(options: AppOptions = {}) {
       const matchedOrder = orderCodeRaw
         ? await repo.findOrderByCode(orderCodeRaw)
         : null;
+      const optionalCustomer = extractOptionalCustomer(req, options.jwtSecret);
 
       const review: ProductReviewRecord = {
         id: `rev-${crypto.randomUUID().slice(0, 8)}`,
         productId: product.id,
+        customerId: optionalCustomer?.sub,
         customerName: customerName.slice(0, 60),
         vehicleInfo: vehicleInfo.slice(0, 80),
         rating,
@@ -530,15 +579,348 @@ export function createApp(options: AppOptions = {}) {
     res.json({ admin: res.locals.admin });
   });
 
+  // --- Customer Auth, Profile, My Garage & Order History (v9) ---
+  app.post("/api/customer/register", async (req, res, next) => {
+    try {
+      const body = req.body as Record<string, unknown>;
+      const fullName =
+        typeof body.fullName === "string" ? body.fullName.trim().slice(0, 80) : "";
+      const rawPhone = typeof body.phone === "string" ? body.phone.trim() : "";
+      const rawEmail = typeof body.email === "string" ? body.email.trim() : "";
+      const password = typeof body.password === "string" ? body.password : "";
+      const shippingAddress =
+        typeof body.shippingAddress === "string" && body.shippingAddress.trim()
+          ? body.shippingAddress.trim().slice(0, 220)
+          : undefined;
+      const vehicleSummary =
+        typeof body.vehicleInfo === "string" ? body.vehicleInfo.trim() : "";
+
+      const phone = rawPhone ? normalizePhone(rawPhone) : undefined;
+      const email = rawEmail ? normalizeEmail(rawEmail) : undefined;
+
+      if (!fullName || password.length < 6) {
+        res.status(400).json({
+          error: "Vui lòng nhập họ tên và mật khẩu tối thiểu 6 ký tự.",
+        });
+        return;
+      }
+
+      if (!phone && !email) {
+        res.status(400).json({
+          error: "Vui lòng nhập ít nhất Số điện thoại hoặc Email để đăng ký.",
+        });
+        return;
+      }
+
+      if (phone && (phone.length < 9 || phone.length > 13)) {
+        res.status(400).json({ error: "Số điện thoại không hợp lệ." });
+        return;
+      }
+
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        res.status(400).json({ error: "Email không đúng định dạng." });
+        return;
+      }
+
+      if (phone && (await repo.findCustomerByIdentifier(phone))) {
+        res.status(409).json({
+          error: "Số điện thoại này đã được đăng ký. Vui lòng đăng nhập.",
+        });
+        return;
+      }
+
+      if (email && (await repo.findCustomerByIdentifier(email))) {
+        res.status(409).json({
+          error: "Email này đã được đăng ký. Vui lòng đăng nhập.",
+        });
+        return;
+      }
+
+      const initialVehicles = sanitizeGarageList(body.garageVehicles);
+      if (initialVehicles.length === 0 && vehicleSummary) {
+        const parts = vehicleSummary.split(/\s+/);
+        initialVehicles.push({
+          id: `veh-${crypto.randomUUID().slice(0, 8)}`,
+          make: parts[0] || "Xe cá nhân",
+          model: parts.slice(1).join(" ") || vehicleSummary,
+          year: "Đang dùng",
+        });
+      }
+
+      const now = new Date().toISOString();
+      const customer = await repo.createCustomer({
+        id: `cust-${crypto.randomUUID().slice(0, 8)}`,
+        fullName,
+        phone,
+        email,
+        passwordHash: hashPassword(password),
+        shippingAddress,
+        garageVehicles: initialVehicles,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const token = signCustomerToken(
+        {
+          sub: customer.id,
+          fullName: customer.fullName,
+          phone: customer.phone,
+          email: customer.email,
+        },
+        options.jwtSecret,
+      );
+
+      res.status(201).json({ token, customer });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post("/api/customer/login", async (req, res, next) => {
+    try {
+      const body = req.body as Record<string, unknown>;
+      const rawIdentifier =
+        (typeof body.identifier === "string" && body.identifier) ||
+        (typeof body.phone === "string" && body.phone) ||
+        (typeof body.email === "string" && body.email) ||
+        "";
+      const identifier = rawIdentifier.trim();
+      const password = typeof body.password === "string" ? body.password : "";
+
+      if (!identifier || !password) {
+        res.status(400).json({
+          error: "Vui lòng nhập Email hoặc Số điện thoại và mật khẩu.",
+        });
+        return;
+      }
+
+      const account = await repo.findCustomerByIdentifier(identifier);
+      if (!account || !verifyPassword(password, account.passwordHash)) {
+        res.status(401).json({
+          error: "Sai Email/Số điện thoại hoặc mật khẩu.",
+        });
+        return;
+      }
+
+      const customer = toPublicCustomer(account);
+      const token = signCustomerToken(
+        {
+          sub: customer.id,
+          fullName: customer.fullName,
+          phone: customer.phone,
+          email: customer.email,
+        },
+        options.jwtSecret,
+      );
+
+      res.json({ token, customer });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get("/api/customer/me", requireCustomer, async (_req, res, next) => {
+    try {
+      const payload = res.locals.customer as { sub: string };
+      const account = await repo.findCustomerById(payload.sub);
+      if (!account) {
+        res.status(401).json({ error: "Tài khoản khách hàng không tồn tại." });
+        return;
+      }
+      const customer = toPublicCustomer(account);
+      const orders = await repo.listOrdersByCustomer(customer.id, customer.phone);
+      res.json({ customer, orders });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.patch("/api/customer/me", requireCustomer, async (req, res, next) => {
+    try {
+      const payload = res.locals.customer as { sub: string };
+      const current = await repo.findCustomerById(payload.sub);
+      if (!current) {
+        res.status(404).json({ error: "Không tìm thấy tài khoản." });
+        return;
+      }
+
+      const body = req.body as Record<string, unknown>;
+      const patch: {
+        fullName?: string;
+        phone?: string | null;
+        email?: string | null;
+        shippingAddress?: string | null;
+        passwordHash?: string;
+        garageVehicles?: CustomerGarageVehicle[];
+      } = {};
+
+      if (typeof body.fullName === "string") {
+        const trimmed = body.fullName.trim().slice(0, 80);
+        if (!trimmed) {
+          res.status(400).json({ error: "Họ tên không được để trống." });
+          return;
+        }
+        patch.fullName = trimmed;
+      }
+
+      if (body.phone !== undefined) {
+        const cleanPhone =
+          typeof body.phone === "string" && body.phone.trim()
+            ? normalizePhone(body.phone)
+            : null;
+        if (cleanPhone && (cleanPhone.length < 9 || cleanPhone.length > 13)) {
+          res.status(400).json({ error: "Số điện thoại không hợp lệ." });
+          return;
+        }
+        if (cleanPhone) {
+          const existing = await repo.findCustomerByIdentifier(cleanPhone);
+          if (existing && existing.id !== current.id) {
+            res.status(409).json({ error: "Số điện thoại đã thuộc về tài khoản khác." });
+            return;
+          }
+        }
+        patch.phone = cleanPhone;
+      }
+
+      if (body.email !== undefined) {
+        const cleanEmail =
+          typeof body.email === "string" && body.email.trim()
+            ? normalizeEmail(body.email)
+            : null;
+        if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+          res.status(400).json({ error: "Email không hợp lệ." });
+          return;
+        }
+        if (cleanEmail) {
+          const existing = await repo.findCustomerByIdentifier(cleanEmail);
+          if (existing && existing.id !== current.id) {
+            res.status(409).json({ error: "Email đã thuộc về tài khoản khác." });
+            return;
+          }
+        }
+        patch.email = cleanEmail;
+      }
+
+      const nextPhone = patch.phone === undefined ? current.phone : patch.phone;
+      const nextEmail = patch.email === undefined ? current.email : patch.email;
+      if (!nextPhone && !nextEmail) {
+        res.status(400).json({
+          error: "Cần giữ lại ít nhất Số điện thoại hoặc Email cho tài khoản.",
+        });
+        return;
+      }
+
+      if (body.shippingAddress !== undefined) {
+        patch.shippingAddress =
+          typeof body.shippingAddress === "string" && body.shippingAddress.trim()
+            ? body.shippingAddress.trim().slice(0, 220)
+            : null;
+      }
+
+      if (body.garageVehicles !== undefined) {
+        patch.garageVehicles = sanitizeGarageList(body.garageVehicles);
+      }
+
+      if (typeof body.newPassword === "string" && body.newPassword.length > 0) {
+        const currentPassword =
+          typeof body.currentPassword === "string" ? body.currentPassword : "";
+        if (!verifyPassword(currentPassword, current.passwordHash)) {
+          res.status(400).json({ error: "Mật khẩu hiện tại không đúng." });
+          return;
+        }
+        if (body.newPassword.length < 6) {
+          res.status(400).json({ error: "Mật khẩu mới phải tối thiểu 6 ký tự." });
+          return;
+        }
+        patch.passwordHash = hashPassword(body.newPassword);
+      }
+
+      const updated = await repo.updateCustomer(current.id, patch);
+      if (!updated) {
+        res.status(404).json({ error: "Cập nhật tài khoản thất bại." });
+        return;
+      }
+      res.json({ customer: updated });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get("/api/customer/orders", requireCustomer, async (_req, res, next) => {
+    try {
+      const payload = res.locals.customer as { sub: string };
+      const account = await repo.findCustomerById(payload.sub);
+      if (!account) {
+        res.status(401).json({ error: "Tài khoản không tồn tại." });
+        return;
+      }
+      const items = await repo.listOrdersByCustomer(account.id, account.phone);
+      res.json({ items });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post("/api/customer/garage", requireCustomer, async (req, res, next) => {
+    try {
+      const payload = res.locals.customer as { sub: string };
+      const account = await repo.findCustomerById(payload.sub);
+      if (!account) {
+        res.status(404).json({ error: "Không tìm thấy tài khoản." });
+        return;
+      }
+      const vehicle = sanitizeGarageVehicle(req.body);
+      if (!vehicle) {
+        res.status(400).json({ error: "Vui lòng nhập Hãng xe và Dòng xe." });
+        return;
+      }
+      const nextList = [
+        vehicle,
+        ...account.garageVehicles.filter((v) => v.id !== vehicle.id),
+      ].slice(0, 10);
+      const updated = await repo.updateCustomer(account.id, {
+        garageVehicles: nextList,
+      });
+      res.status(201).json({ customer: updated });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.delete(
+    "/api/customer/garage/:vehicleId",
+    requireCustomer,
+    async (req, res, next) => {
+      try {
+        const payload = res.locals.customer as { sub: string };
+        const account = await repo.findCustomerById(payload.sub);
+        if (!account) {
+          res.status(404).json({ error: "Không tìm thấy tài khoản." });
+          return;
+        }
+        const vehicleId = readParam(req.params.vehicleId);
+        const nextList = account.garageVehicles.filter((v) => v.id !== vehicleId);
+        const updated = await repo.updateCustomer(account.id, {
+          garageVehicles: nextList,
+        });
+        res.json({ customer: updated });
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
   // --- Admin Operations & Dashboard Endpoints (Issues #2, #3, #7) ---
   app.get("/api/admin/overview", requireAdmin, async (_req, res, next) => {
     try {
-      const [products, orders, inventoryLogs, allReviews] = await Promise.all([
-        repo.listProducts(),
-        repo.listOrders(100),
-        repo.listInventoryLogs(15),
-        repo.listReviews({ status: "all" }),
-      ]);
+      const [products, orders, inventoryLogs, allReviews, totalCustomers] =
+        await Promise.all([
+          repo.listProducts(),
+          repo.listOrders(100),
+          repo.listInventoryLogs(15),
+          repo.listReviews({ status: "all" }),
+          repo.countCustomers(),
+        ]);
 
       const totalRevenueVnd = orders.reduce((sum, o) => sum + o.totalVnd, 0);
       const pendingOrders = orders.filter((o) => o.status === "pending_confirm").length;
@@ -560,6 +942,7 @@ export function createApp(options: AppOptions = {}) {
           totalRevenueVnd,
           pendingReviews,
           approvedReviews,
+          totalCustomers,
         },
         recentNotifications: notifier.history.slice(0, 10),
         recentInventoryLogs: inventoryLogs,

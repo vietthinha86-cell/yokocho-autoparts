@@ -57,6 +57,7 @@ model VehicleBuildCombo {
 model Order {
   id              String      @id @default(cuid())
   orderCode       String      @unique
+  customerId      String?
   customerName    String
   phone           String
   vehicleInfo     String
@@ -71,6 +72,9 @@ model Order {
   items           OrderItem[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+
+  @@index([customerId])
+  @@index([phone])
 }
 
 model OrderItem {
@@ -110,6 +114,7 @@ model DailyInventoryLog {
 model ProductReview {
   id               String   @id @default(cuid())
   productId        String
+  customerId       String?
   customerName     String
   vehicleInfo      String
   rating           Int
@@ -125,5 +130,17 @@ model ProductReview {
 
   @@index([productId, status])
   @@index([status, createdAt])
+}
+
+model CustomerUser {
+  id                 String   @id @default(cuid())
+  fullName           String
+  phone              String?  @unique
+  email              String?  @unique
+  passwordHash       String
+  shippingAddress    String?
+  garageVehiclesJson Json     @default("[]")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 

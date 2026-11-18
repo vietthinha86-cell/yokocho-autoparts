@@ -2,8 +2,11 @@ import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { normalizeEmail, normalizePhone } from "../auth/adminAuth.ts";
 import {
   AUTO_PARTS_CATALOG,
+  DEFAULT_DEMO_CUSTOMER_SEED,
+  DEFAULT_DEMO_ORDERS,
   DEFAULT_PRODUCT_REVIEWS,
   VEHICLE_COMBOS,
   VEHICLE_FITMENTS,
@@ -11,6 +14,8 @@ import {
 import type {
   AdminUserRecord,
   AutoPartProduct,
+  CustomerGarageVehicle,
+  CustomerProfileRecord,
   InventoryLogRecord,
   OrderRecord,
   ProductReviewRecord,
@@ -18,7 +23,12 @@ import type {
   VehicleBuildCombo,
   VehicleFitment,
 } from "../types.ts";
-import type { GarageRepository, StoredAdminAccount } from "./repository.ts";
+import {
+  toPublicCustomer,
+  type GarageRepository,
+  type StoredAdminAccount,
+  type StoredCustomerAccount,
+} from "./repository.ts";
 
 interface JsonStoreState {
   products: AutoPartProduct[];
@@ -26,6 +36,7 @@ interface JsonStoreState {
   combos: VehicleBuildCombo[];
   orders: OrderRecord[];
   admins: StoredAdminAccount[];
+  customers: StoredCustomerAccount[];
   inventoryLogs: InventoryLogRecord[];
   reviews: ProductReviewRecord[];
 }
@@ -54,13 +65,31 @@ export class JsonRepository implements GarageRepository {
     };
   }
 
+  private createDefaultDemoCustomer(): StoredCustomerAccount {
+    return {
+      id: DEFAULT_DEMO_CUSTOMER_SEED.id,
+      fullName: DEFAULT_DEMO_CUSTOMER_SEED.fullName,
+      phone: DEFAULT_DEMO_CUSTOMER_SEED.phone,
+      email: DEFAULT_DEMO_CUSTOMER_SEED.email,
+      passwordHash: bcrypt.hashSync(DEFAULT_DEMO_CUSTOMER_SEED.defaultPassword, 8),
+      shippingAddress: DEFAULT_DEMO_CUSTOMER_SEED.shippingAddress,
+      garageVehicles: DEFAULT_DEMO_CUSTOMER_SEED.garageVehicles.map((v) => ({ ...v })),
+      createdAt: DEFAULT_DEMO_CUSTOMER_SEED.createdAt,
+      updatedAt: DEFAULT_DEMO_CUSTOMER_SEED.createdAt,
+    };
+  }
+
   private load(): JsonStoreState {
     const baseState: JsonStoreState = {
       products: AUTO_PARTS_CATALOG.map((p) => ({ ...p, specs: { ...p.specs } })),
       fitments: VEHICLE_FITMENTS.map((f) => ({ ...f })),
       combos: VEHICLE_COMBOS.map((c) => ({ ...c })),
-      orders: [],
+      orders: DEFAULT_DEMO_ORDERS.map((o) => ({
+        ...o,
+        items: o.items.map((i) => ({ ...i })),
+      })),
       admins: [this.createDefaultAdmin()],
+      customers: [this.createDefaultDemoCustomer()],
       inventoryLogs: [],
       reviews: DEFAULT_PRODUCT_REVIEWS.map((r) => ({ ...r })),
     };
@@ -83,12 +112,25 @@ export class JsonRepository implements GarageRepository {
 
       if (parsed && typeof parsed === "object") {
         const obj = parsed as Partial<JsonStoreState>;
+        const loadedOrders = Array.isArray(obj.orders) ? obj.orders : baseState.orders;
+        const ordersWithDemo = Array.isArray(obj.customers)
+          ? loadedOrders
+          : [
+              ...loadedOrders,
+              ...DEFAULT_DEMO_ORDERS.filter(
+                (demo) => !loadedOrders.some((o) => o.orderCode === demo.orderCode),
+              ),
+            ];
         return {
           products: Array.isArray(obj.products) && obj.products.length > 0 ? obj.products : baseState.products,
           fitments: Array.isArray(obj.fitments) && obj.fitments.length > 0 ? obj.fitments : baseState.fitments,
           combos: Array.isArray(obj.combos) && obj.combos.length > 0 ? obj.combos : baseState.combos,
-          orders: Array.isArray(obj.orders) ? obj.orders : [],
+          orders: ordersWithDemo,
           admins: Array.isArray(obj.admins) && obj.admins.length > 0 ? obj.admins : baseState.admins,
+          customers:
+            Array.isArray(obj.customers) && obj.customers.length > 0
+              ? obj.customers
+              : baseState.customers,
           inventoryLogs: Array.isArray(obj.inventoryLogs) ? obj.inventoryLogs : [],
           reviews: Array.isArray(obj.reviews) ? obj.reviews : baseState.reviews,
         };
@@ -188,6 +230,22 @@ export class JsonRepository implements GarageRepository {
 
   async listOrders(limit = 50): Promise<OrderRecord[]> {
     return this.state.orders.slice(0, limit);
+  }
+
+  async listOrdersByCustomer(
+    customerId: string,
+    phone?: string,
+  ): Promise<OrderRecord[]> {
+    const normalizedPhone = phone ? normalizePhone(phone) : "";
+    return this.state.orders.filter((order) => {
+      if (order.customerId && order.customerId === customerId) {
+        return true;
+      }
+      if (normalizedPhone && normalizePhone(order.phone) === normalizedPhone) {
+        return true;
+      }
+      return false;
+    });
   }
 
   async findOrderByCode(orderCode: string): Promise<OrderRecord | null> {
@@ -337,6 +395,67 @@ export class JsonRepository implements GarageRepository {
       this.save();
     }
     return removed;
+  }
+
+  async countCustomers(): Promise<number> {
+    return this.state.customers.length;
+  }
+
+  async findCustomerByIdentifier(
+    identifier: string,
+  ): Promise<StoredCustomerAccount | null> {
+    const emailNorm = normalizeEmail(identifier);
+    const phoneNorm = normalizePhone(identifier);
+    return (
+      this.state.customers.find((c) => {
+        if (c.email && normalizeEmail(c.email) === emailNorm) return true;
+        if (phoneNorm && c.phone && normalizePhone(c.phone) === phoneNorm) return true;
+        return false;
+      }) ?? null
+    );
+  }
+
+  async findCustomerById(id: string): Promise<StoredCustomerAccount | null> {
+    return this.state.customers.find((c) => c.id === id) ?? null;
+  }
+
+  async createCustomer(account: StoredCustomerAccount): Promise<CustomerProfileRecord> {
+    this.state.customers.unshift(account);
+    this.save();
+    return toPublicCustomer(account);
+  }
+
+  async updateCustomer(
+    id: string,
+    patch: {
+      fullName?: string;
+      phone?: string | null;
+      email?: string | null;
+      shippingAddress?: string | null;
+      passwordHash?: string;
+      garageVehicles?: CustomerGarageVehicle[];
+    },
+  ): Promise<CustomerProfileRecord | null> {
+    const idx = this.state.customers.findIndex((c) => c.id === id);
+    if (idx === -1) return null;
+
+    const current = this.state.customers[idx];
+    const updated: StoredCustomerAccount = {
+      ...current,
+      fullName: patch.fullName ?? current.fullName,
+      phone: patch.phone === null ? undefined : (patch.phone ?? current.phone),
+      email: patch.email === null ? undefined : (patch.email ?? current.email),
+      shippingAddress:
+        patch.shippingAddress === null
+          ? undefined
+          : (patch.shippingAddress ?? current.shippingAddress),
+      passwordHash: patch.passwordHash ?? current.passwordHash,
+      garageVehicles: patch.garageVehicles ?? current.garageVehicles,
+      updatedAt: new Date().toISOString(),
+    };
+    this.state.customers[idx] = updated;
+    this.save();
+    return toPublicCustomer(updated);
   }
 }
 

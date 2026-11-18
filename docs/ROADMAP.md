@@ -50,12 +50,14 @@ Dự án được chia thành **4 Phase** rõ ràng để bạn có thể phát 
 - [x] Gửi thông báo đơn hàng mới & thanh toán về Telegram Bot / Notification log (`NotificationDispatcher`)
 - [x] Full-text search tiếng Việt không dấu & đồng nghĩa kỹ thuật (`normalizeViText` + `matchesSmartProductQuery`) cho mã OEM, dòng xe & tên phụ tùng
 - [x] Hệ thống đánh giá & ảnh lắp đặt thực tế từ khách hàng (kèm kiểm duyệt tại `/admin` & tự xác thực mã đơn)
+- [x] Hệ thống Tài Khoản & Đăng Nhập Khách Hàng (`CustomerUser`, JWT `kind: "customer"`, `/api/customer/*` cho đăng ký/đăng nhập SĐT & Email, hồ sơ, Gara xe & lịch sử đơn theo tài khoản/SĐT)
 
 ### Frontend
 - [x] Hiển thị mã VietQR động ngay màn hình đặt hàng thành công
 - [x] Trang "Xe Đã Lên Đèn" (Gallery cấu hình combo thực tế cho Civic, Bán tải Custom, Mazda 3...)
 - [x] Chatbot `AI Thợ Đêm` Multi-Provider AI Thực Tế (Gemini Vision / OpenAI-Groq-OpenRouter / Local Ollama `qwen2.5:3b` + `qwen2.5vl:3b` + Fallback) kèm Tab cấu hình & test AI trong `/admin` (`AkariAiDrawer`, `/api/ai/status`, `/api/admin/ai-config`)
 - [x] Tối ưu `next/image` (AVIF/WebP), dynamic `sitemap.xml`, `robots.txt`, JSON-LD `Product`/`AggregateRating` & OpenGraph SEO + ổn định AI Ollama warmup
+- [x] Cổng thành viên (`/dang-nhap` & `/tai-khoan` gồm Lịch Sử Đơn Hàng, Gara Xe Của Tôi, Hồ Sơ & tự điền checkout/review mà vẫn giữ Guest Checkout song song)
 
 ---
 

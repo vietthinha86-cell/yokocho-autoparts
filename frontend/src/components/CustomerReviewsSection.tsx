@@ -15,6 +15,7 @@ import {
 import { useMemo, useRef, useState } from "react";
 import { submitCustomerReview } from "@/lib/api";
 import { compressImageFileToDataUrl } from "@/lib/imageUtils";
+import { useCustomerSession } from "@/lib/useCustomerSession";
 import type {
   AutoPartProduct,
   BeamModeChoice,
@@ -63,12 +64,13 @@ export function CustomerReviewsSection({
   const [formOpen, setFormOpen] = useState(false);
   const [lightboxReview, setLightboxReview] = useState<ProductReviewRecord | null>(null);
 
+  const { customer, orders } = useCustomerSession();
   const [selectedProductId, setSelectedProductId] = useState(
     fixedProduct?.id ?? products[0]?.id ?? "",
   );
-  const [customerName, setCustomerName] = useState("");
-  const [vehicleInfo, setVehicleInfo] = useState("");
-  const [orderCode, setOrderCode] = useState("");
+  const [draftCustomerName, setDraftCustomerName] = useState<string | null>(null);
+  const [draftVehicleInfo, setDraftVehicleInfo] = useState<string | null>(null);
+  const [draftOrderCode, setDraftOrderCode] = useState<string | null>(null);
   const [rating, setRating] = useState(5);
   const [beamMode, setBeamMode] = useState<BeamModeChoice>("4300k");
   const [title, setTitle] = useState("");
@@ -79,6 +81,13 @@ export function CustomerReviewsSection({
     type: "success" | "error";
     text: string;
   } | null>(null);
+
+  const defaultGarageCar = customer?.garageVehicles?.[0]
+    ? `${customer.garageVehicles[0].make} ${customer.garageVehicles[0].model} ${customer.garageVehicles[0].year}`.trim()
+    : "";
+  const effectiveCustomerName = draftCustomerName ?? customer?.fullName ?? "";
+  const effectiveVehicleInfo = draftVehicleInfo ?? defaultGarageCar;
+  const effectiveOrderCode = draftOrderCode ?? orders[0]?.orderCode ?? "";
 
   const productLookup = useMemo(() => {
     const map = new Map<string, AutoPartProduct>();
@@ -122,13 +131,13 @@ export function CustomerReviewsSection({
     const targetProductId = fixedProduct?.id ?? selectedProductId;
     const res = await submitCustomerReview({
       productId: targetProductId,
-      customerName: customerName.trim(),
-      vehicleInfo: vehicleInfo.trim(),
+      customerName: effectiveCustomerName.trim(),
+      vehicleInfo: effectiveVehicleInfo.trim(),
       rating,
       title: title.trim() || undefined,
       comment: comment.trim(),
       beamMode,
-      orderCode: orderCode.trim() || undefined,
+      orderCode: effectiveOrderCode.trim() || undefined,
       photoUrl: photoPreview,
     });
 
@@ -142,9 +151,9 @@ export function CustomerReviewsSection({
       return;
     }
 
-    setCustomerName("");
-    setVehicleInfo("");
-    setOrderCode("");
+    setDraftCustomerName(null);
+    setDraftVehicleInfo(null);
+    setDraftOrderCode(null);
     setTitle("");
     setComment("");
     setPhotoPreview(undefined);
@@ -256,8 +265,8 @@ export function CustomerReviewsSection({
           <div>
             <label className="mb-1 block font-bold text-zinc-300">Tên của bạn *</label>
             <input
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
+              value={effectiveCustomerName}
+              onChange={(e) => setDraftCustomerName(e.target.value)}
               placeholder="VD: Minh Quân"
               required
               className="w-full border border-red-900/60 bg-[#050204] px-3 py-2 text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
@@ -267,8 +276,8 @@ export function CustomerReviewsSection({
           <div>
             <label className="mb-1 block font-bold text-zinc-300">Dòng xe &amp; Đời xe *</label>
             <input
-              value={vehicleInfo}
-              onChange={(e) => setVehicleInfo(e.target.value)}
+              value={effectiveVehicleInfo}
+              onChange={(e) => setDraftVehicleInfo(e.target.value)}
               placeholder="VD: Honda City RS 2022"
               required
               className="w-full border border-red-900/60 bg-[#050204] px-3 py-2 text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
@@ -280,8 +289,8 @@ export function CustomerReviewsSection({
               Mã đơn hàng (tuỳ chọn để xác thực)
             </label>
             <input
-              value={orderCode}
-              onChange={(e) => setOrderCode(e.target.value)}
+              value={effectiveOrderCode}
+              onChange={(e) => setDraftOrderCode(e.target.value)}
               placeholder="VD: YKC-8421-X9A2"
               className="w-full border border-red-900/60 bg-[#050204] px-3 py-2 font-mono text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
             />

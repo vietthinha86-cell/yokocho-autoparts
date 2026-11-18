@@ -527,4 +527,130 @@ describe("Akari Yokocho AutoParts API", () => {
     });
     assert.equal(delRes.status, 200);
   });
+
+  it("supports customer registration, normalized login, My Garage, order history & token isolation", async () => {
+    // 1. Guest places an order before registering
+    const guestOrderRes = await fetch(`${baseUrl}/api/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName: "Anh Tuấn",
+        phone: "0988 111 222",
+        vehicleInfo: "Mazda CX-30 2023",
+        shippingAddress: "Cầu Giấy, Hà Nội",
+        items: [{ productId: "kuro-fog-kitsune-f30", quantity: 1 }],
+      }),
+    });
+    assert.equal(guestOrderRes.status, 201);
+    const guestOrder = (await guestOrderRes.json()) as {
+      item: { orderCode: string };
+    };
+
+    // 2. Register customer with same phone (normalized) + email
+    const regRes = await fetch(`${baseUrl}/api/customer/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fullName: "Anh Tuấn JDM",
+        phone: "+84988111222",
+        email: "tuan@example.com",
+        password: "secret123",
+        shippingAddress: "Số 18 Hoàng Quốc Việt, Hà Nội",
+        vehicleInfo: "Mazda CX-30 2023",
+      }),
+    });
+    assert.equal(regRes.status, 201);
+    const regData = (await regRes.json()) as {
+      token: string;
+      customer: { id: string; phone: string; email: string; garageVehicles: Array<{ id: string }> };
+    };
+    assert.equal(regData.customer.phone, "0988111222");
+    assert.ok(regData.customer.garageVehicles.length === 1);
+
+    // Reject duplicate phone
+    const dupRes = await fetch(`${baseUrl}/api/customer/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fullName: "Another User",
+        phone: "0988111222",
+        password: "secret123",
+      }),
+    });
+    assert.equal(dupRes.status, 409);
+
+    // 3. Security isolation: customer token cannot access admin overview
+    const forbidAdmin = await fetch(`${baseUrl}/api/admin/overview`, {
+      headers: { Authorization: `Bearer ${regData.token}` },
+    });
+    assert.equal(forbidAdmin.status, 401);
+
+    // 4. Login by email & check phone order history + new authenticated order
+    const loginRes = await fetch(`${baseUrl}/api/customer/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identifier: "TUAN@EXAMPLE.COM",
+        password: "secret123",
+      }),
+    });
+    assert.equal(loginRes.status, 200);
+    const { token } = (await loginRes.json()) as { token: string };
+    const custHeaders = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+
+    const addCarRes = await fetch(`${baseUrl}/api/customer/garage`, {
+      method: "POST",
+      headers: custHeaders,
+      body: JSON.stringify({
+        make: "Honda",
+        model: "CR-V L",
+        year: "2024",
+        nickname: "Xe Gia Đình",
+      }),
+    });
+    assert.equal(addCarRes.status, 201);
+    const addCarData = (await addCarRes.json()) as {
+      customer: { garageVehicles: Array<{ id: string; make: string }> };
+    };
+    assert.equal(addCarData.customer.garageVehicles.length, 2);
+    const addedCarId = addCarData.customer.garageVehicles[0].id;
+
+    const delCarRes = await fetch(`${baseUrl}/api/customer/garage/${addedCarId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    assert.equal(delCarRes.status, 200);
+
+    const authOrderRes = await fetch(`${baseUrl}/api/orders`, {
+      method: "POST",
+      headers: custHeaders,
+      body: JSON.stringify({
+        customerName: "Anh Tuấn JDM",
+        phone: "0988111222",
+        vehicleInfo: "Mazda CX-30 2023",
+        shippingAddress: "Số 18 Hoàng Quốc Việt, Hà Nội",
+        items: [{ productId: "akari-biled-yami-v9", quantity: 1 }],
+      }),
+    });
+    assert.equal(authOrderRes.status, 201);
+    const authOrder = (await authOrderRes.json()) as {
+      item: { orderCode: string; customerId?: string };
+    };
+    assert.equal(authOrder.item.customerId, regData.customer.id);
+
+    const meRes = await fetch(`${baseUrl}/api/customer/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    assert.equal(meRes.status, 200);
+    const meData = (await meRes.json()) as {
+      customer: { fullName: string };
+      orders: Array<{ orderCode: string }>;
+    };
+    assert.equal(meData.customer.fullName, "Anh Tuấn JDM");
+    assert.ok(meData.orders.some((o) => o.orderCode === guestOrder.item.orderCode));
+    assert.ok(meData.orders.some((o) => o.orderCode === authOrder.item.orderCode));
+  });
 });
