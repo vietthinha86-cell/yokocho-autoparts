@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import { ArrowDownRight, Eye, ShieldCheck, Sparkles, Wrench } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ChochinLantern } from "./ChochinLantern";
-import { MidnightRainCanvas } from "./MidnightRainCanvas";
+import { MidnightRainCanvas, type CanvasPointerTarget } from "./MidnightRainCanvas";
 
 const NOREN_PANELS = [
   { kanji: "赤", sub: "AKARI" },
@@ -15,9 +15,15 @@ const NOREN_PANELS = [
 
 export function HeroAlley() {
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
+  const pointerRef = useRef<CanvasPointerTarget>({ x: 0, y: 0, active: false });
 
   function handleMouseMove(e: React.MouseEvent<HTMLElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
+    pointerRef.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+      active: true,
+    };
     const nx = (e.clientX - rect.left) / rect.width - 0.5;
     const ny = (e.clientY - rect.top) / rect.height - 0.5;
     setParallax({ x: Number((-nx * 18).toFixed(1)), y: Number((-ny * 12).toFixed(1)) });
@@ -27,7 +33,10 @@ export function HeroAlley() {
     <section
       id="top"
       onMouseMove={handleMouseMove}
-      onMouseLeave={() => setParallax({ x: 0, y: 0 })}
+      onMouseLeave={() => {
+        pointerRef.current = { ...pointerRef.current, active: false };
+        setParallax({ x: 0, y: 0 });
+      }}
       className="relative overflow-hidden border-b border-red-700/50 bg-[#040204]"
     >
       {/* Parallax + Living Cinemagraph Photograph */}
@@ -51,9 +60,27 @@ export function HeroAlley() {
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#040204]/96 via-[#060205]/74 lg:via-[#070306]/42 to-transparent" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040204] via-transparent to-[#040204]/75" />
 
-      {/* Live 60fps HTML5 Canvas Midnight Rain, Crimson Embers & Asphalt Puddle Ripples */}
+      {/* Live 60fps HTML5 Canvas Midnight Rain, Crimson Embers & Pointer Optical Vortex */}
       <div className="pointer-events-none absolute inset-0 z-[5]">
-        <MidnightRainCanvas intensity="hero" />
+        <MidnightRainCanvas intensity="hero" pointerRef={pointerRef} />
+      </div>
+
+      {/* Montfort-Inspired Spatial Bi-LED Glass Ring Emblem at Optical Vortex Core */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute top-[24%] right-[14%] z-[7] hidden h-48 w-48 items-center justify-center transition-transform duration-300 ease-out lg:flex"
+        style={{
+          transform: `translate3d(${(-parallax.x * 0.7).toFixed(1)}px, ${(-parallax.y * 0.7).toFixed(1)}px, 0)`,
+        }}
+      >
+        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(255,46,67,0.22)_0%,rgba(245,158,11,0.1)_48%,transparent_72%)] blur-xl" />
+        <div className="animate-orbit-slow absolute inset-2 rounded-full border border-dashed border-amber-400/35" />
+        <div className="animate-orbit-reverse absolute inset-7 rounded-full border border-[#ff2e43]/55 shadow-[0_0_24px_rgba(255,46,67,0.35),inset_0_0_20px_rgba(245,158,11,0.18)]" />
+        <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-white/25 bg-black/35 shadow-[0_0_32px_rgba(255,46,67,0.45),inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-[2px]">
+          <span className="font-jp text-2xl font-black text-amber-300/90 drop-shadow-[0_0_12px_rgba(245,158,11,0.8)]">
+            光
+          </span>
+        </div>
       </div>
 
       {/* Drifting crimson mist + crisp katana laser horizon edge */}

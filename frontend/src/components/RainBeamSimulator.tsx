@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { CloudRain, Eye, Flame, Moon, SplitSquareHorizontal, Sun, Zap } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { MidnightRainCanvas, type RainBeamColorMode } from "./MidnightRainCanvas";
 
 type BeamMode = RainBeamColorMode;
@@ -129,8 +129,25 @@ export function RainBeamSimulator({
   const [highBeam, setHighBeam] = useState(false);
   const [compareHalogen, setCompareHalogen] = useState(true);
   const [splitPct, setSplitPct] = useState(46);
+  const [chromaBurst, setChromaBurst] = useState(false);
+  const [prismSweepKey, setPrismSweepKey] = useState(0);
+  const burstTimerRef = useRef<number | null>(null);
+
+  function triggerChromaTransition() {
+    setChromaBurst(true);
+    setPrismSweepKey((k) => k + 1);
+    if (burstTimerRef.current !== null) {
+      window.clearTimeout(burstTimerRef.current);
+    }
+    burstTimerRef.current = window.setTimeout(() => {
+      setChromaBurst(false);
+    }, 360);
+  }
 
   function selectMode(next: BeamMode) {
+    if (next !== mode) {
+      triggerChromaTransition();
+    }
     setInternalMode(next);
     onModeChange?.(next);
   }
@@ -167,8 +184,12 @@ export function RainBeamSimulator({
           {/* Interactive Live Dark Alley Projection Viewport */}
           <div className="yokocho-panel chamfer-md relative overflow-hidden lg:col-span-8">
             <div className="relative h-80 w-full select-none sm:h-[440px]">
-              {/* Subtle breathing camera cinemagraph */}
-              <div className="animate-hero-cinema relative h-full w-full">
+              {/* Subtle breathing camera cinemagraph + short Chromatic RGB transition */}
+              <div
+                className={`animate-hero-cinema relative h-full w-full ${
+                  chromaBurst ? "animate-chroma-burst" : ""
+                }`}
+              >
                 <Image
                   src="/images/alley-beam-stage.jpg"
                   alt="Con hẻm đêm mưa Nhật Bản thử nghiệm tia sáng Bi-LED"
@@ -179,6 +200,14 @@ export function RainBeamSimulator({
                   }`}
                 />
               </div>
+
+              {prismSweepKey > 0 && (
+                <div
+                  key={prismSweepKey}
+                  aria-hidden="true"
+                  className="animate-prism-sweep pointer-events-none absolute inset-y-0 left-0 z-20 w-1/2 bg-gradient-to-r from-transparent via-sky-300/25 to-red-500/20 mix-blend-screen"
+                />
+              )}
 
               {/* Dual Headlight Optical Projections + Live Shimmer */}
               <div
@@ -341,7 +370,10 @@ export function RainBeamSimulator({
                   <button
                     type="button"
                     disabled={!canHighBeam}
-                    onClick={() => setHighBeam((prev) => !prev)}
+                    onClick={() => {
+                      triggerChromaTransition();
+                      setHighBeam((prev) => !prev);
+                    }}
                     className={`chamfer-sm inline-flex cursor-pointer items-center gap-1.5 border px-3.5 py-1.5 font-mono text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${
                       highBeamActive
                         ? "border-sky-300 bg-sky-400 text-slate-950 shadow-[0_0_28px_rgba(56,189,248,0.85)]"

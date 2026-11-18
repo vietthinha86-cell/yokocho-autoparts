@@ -1,13 +1,20 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 export type RainBeamColorMode = "off" | "3000k" | "4300k" | "6000k" | "combo";
+
+export interface CanvasPointerTarget {
+  x: number;
+  y: number;
+  active: boolean;
+}
 
 interface MidnightRainCanvasProps {
   intensity?: "hero" | "simulator" | "subtle";
   beamMode?: RainBeamColorMode;
   highBeam?: boolean;
+  pointerRef?: RefObject<CanvasPointerTarget>;
   className?: string;
 }
 
@@ -41,6 +48,16 @@ interface Ripple {
   crimson: boolean;
 }
 
+interface VortexParticle {
+  t: number;
+  speed: number;
+  spreadX: number;
+  spreadY: number;
+  size: number;
+  alpha: number;
+  palette: "amber" | "crimson" | "pearl";
+}
+
 function resolveBeamTint(beamMode: RainBeamColorMode, highBeam: boolean): string {
   if (highBeam && beamMode !== "off") {
     return "rgba(186, 230, 253, ";
@@ -63,6 +80,7 @@ export function MidnightRainCanvas({
   intensity = "hero",
   beamMode = "off",
   highBeam = false,
+  pointerRef,
   className = "",
 }: MidnightRainCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -88,15 +106,18 @@ export function MidnightRainCanvas({
     const dropCount = intensity === "simulator" ? 135 : intensity === "hero" ? 105 : 42;
     const emberCount = intensity === "hero" ? 28 : intensity === "simulator" ? 18 : 10;
     const rippleCount = intensity === "subtle" ? 0 : 12;
+    const vortexCount = intensity === "hero" ? 84 : 0;
 
     const drops: Drop[] = [];
     const embers: Ember[] = [];
     const ripples: Ripple[] = [];
+    const vortexParticles: VortexParticle[] = [];
 
     const seedParticles = () => {
       drops.length = 0;
       embers.length = 0;
       ripples.length = 0;
+      vortexParticles.length = 0;
 
       for (let i = 0; i < dropCount; i += 1) {
         const depth = Math.random();
@@ -134,6 +155,19 @@ export function MidnightRainCanvas({
           crimson: Math.random() < 0.5,
         });
       }
+
+      for (let i = 0; i < vortexCount; i += 1) {
+        const roll = Math.random();
+        vortexParticles.push({
+          t: Math.random() * Math.PI * 2,
+          speed: 0.007 + Math.random() * 0.008,
+          spreadX: (Math.random() - 0.5) * 34,
+          spreadY: (Math.random() - 0.5) * 28,
+          size: 0.9 + Math.random() * 2.1,
+          alpha: 0.28 + Math.random() * 0.62,
+          palette: roll < 0.46 ? "amber" : roll < 0.85 ? "crimson" : "pearl",
+        });
+      }
     };
 
     const resize = () => {
@@ -151,8 +185,12 @@ export function MidnightRainCanvas({
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
 
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
     let tick = 0;
-    const render = () => {
+    const drawFrame = () => {
       tick += 0.03;
       ctx.clearRect(0, 0, width, height);
 
@@ -252,16 +290,84 @@ export function MidnightRainCanvas({
         ctx.fill();
       }
 
+      // Spatial Figure-8 / Infinity Optical Particle Vortex (Hero showcase layer)
+      if (vortexParticles.length > 0) {
+        const ptr = pointerRef?.current;
+        const focusX = width >= 960 ? width * 0.77 : width * 0.72;
+        const focusY = height * 0.43;
+        const rx = width >= 960 ? Math.min(210, width * 0.16) : Math.min(130, width * 0.2);
+        const ry = Math.min(145, height * 0.28);
+
+        for (let i = 0; i < vortexParticles.length; i += 1) {
+          const vp = vortexParticles[i];
+          vp.t += vp.speed;
+
+          const baseX = focusX + Math.sin(vp.t) * rx + vp.spreadX * Math.cos(vp.t * 0.5);
+          const baseY =
+            focusY + Math.sin(vp.t * 2) * ry * 0.65 + vp.spreadY * Math.sin(vp.t * 0.7);
+          const prevX = focusX + Math.sin(vp.t - 0.09) * rx + vp.spreadX * Math.cos((vp.t - 0.09) * 0.5);
+          const prevY =
+            focusY +
+            Math.sin((vp.t - 0.09) * 2) * ry * 0.65 +
+            vp.spreadY * Math.sin((vp.t - 0.09) * 0.7);
+
+          let px = baseX;
+          let py = baseY;
+          let tailX = prevX;
+          let tailY = prevY;
+          if (ptr?.active) {
+            const dx = ptr.x - baseX;
+            const dy = ptr.y - baseY;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 220 && dist > 1) {
+              const pull = ((220 - dist) / 220) * 18;
+              px += (dx / dist) * pull;
+              py += (dy / dist) * pull;
+              tailX += (dx / dist) * pull * 0.5;
+              tailY += (dy / dist) * pull * 0.5;
+            }
+          }
+
+          const twinkle = 0.6 + 0.4 * Math.sin(tick * 2.5 + vp.t * 3);
+          const a = (vp.alpha * twinkle).toFixed(2);
+          const strokeCol =
+            vp.palette === "amber"
+              ? `rgba(245, 158, 11, ${a})`
+              : vp.palette === "crimson"
+                ? `rgba(255, 46, 67, ${a})`
+                : `rgba(254, 243, 199, ${a})`;
+
+          ctx.beginPath();
+          ctx.lineWidth = vp.size * 0.85;
+          ctx.strokeStyle = strokeCol;
+          ctx.moveTo(tailX, tailY);
+          ctx.lineTo(px, py);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.fillStyle = strokeCol;
+          ctx.arc(px, py, vp.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    };
+
+    const render = () => {
+      drawFrame();
       rafId = window.requestAnimationFrame(render);
     };
 
-    rafId = window.requestAnimationFrame(render);
+    if (prefersReducedMotion) {
+      drawFrame();
+    } else {
+      rafId = window.requestAnimationFrame(render);
+    }
 
     return () => {
-      window.cancelAnimationFrame(rafId);
+      if (rafId) window.cancelAnimationFrame(rafId);
       observer.disconnect();
     };
-  }, [intensity]);
+  }, [intensity, pointerRef]);
 
   return (
     <canvas

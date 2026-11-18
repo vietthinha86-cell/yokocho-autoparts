@@ -22,6 +22,7 @@ import { CartDrawer } from "./CartDrawer";
 import { CompareModal } from "./CompareModal";
 import { CustomerReviewsSection } from "./CustomerReviewsSection";
 import { FitmentBar } from "./FitmentBar";
+import { FloatingHudRail } from "./FloatingHudRail";
 import { Footer } from "./Footer";
 import { HeroAlley } from "./HeroAlley";
 import { AkariAiDrawer } from "./AkariAiDrawer";
@@ -93,6 +94,11 @@ export function StorefrontClient({
   const [aiOpen, setAiOpen] = useState(false);
   const [beamMode, setBeamMode] = useState<RainBeamColorMode>("combo");
   const [lastOrderCode, setLastOrderCode] = useState<string | undefined>(initialLookupCode);
+  const [catalogSweepKey, setCatalogSweepKey] = useState(0);
+
+  function triggerCatalogPrism() {
+    setCatalogSweepKey((k) => k + 1);
+  }
 
   const cart = usePersistentCart();
 
@@ -224,14 +230,24 @@ export function StorefrontClient({
           fitments={initialFitments}
           selectedMake={selectedMake}
           searchQuery={searchQuery}
-          onSelectMake={setSelectedMake}
+          onSelectMake={(make) => {
+            setSelectedMake(make);
+            triggerCatalogPrism();
+          }}
           onSearchChange={setSearchQuery}
           onOpenAi={() => setAiOpen(true)}
         />
 
         {/* Product Catalog Section */}
         <section id="catalog" className="relative mx-auto max-w-7xl px-4 pt-16 pb-14 sm:px-6 lg:px-8">
-          <div className="flex flex-col justify-between gap-5 border-b border-red-800/45 pb-6 md:flex-row md:items-end">
+          <div className="relative flex flex-col justify-between gap-5 overflow-hidden border-b border-red-800/45 pb-6 md:flex-row md:items-end">
+            {catalogSweepKey > 0 && (
+              <div
+                key={catalogSweepKey}
+                aria-hidden="true"
+                className="animate-prism-sweep pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-[#ff2e43]/22 to-amber-400/20 mix-blend-screen"
+              />
+            )}
             <div>
               <p className="flex items-center gap-2 text-xs font-bold tracking-[0.16em] text-[#ff4d5e] uppercase">
                 <span className="font-jp">夜の陳列棚</span>
@@ -251,7 +267,10 @@ export function StorefrontClient({
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => setSelectedCategory(cat.id)}
+                    onClick={() => {
+                      setSelectedCategory(cat.id);
+                      triggerCatalogPrism();
+                    }}
                     className={`chamfer-sm cursor-pointer border px-3.5 py-1.5 text-xs font-semibold transition ${
                       active
                         ? "border-red-400 bg-[#e11d2e] text-white shadow-[0_0_18px_rgba(225,29,46,0.55)]"
@@ -401,6 +420,8 @@ export function StorefrontClient({
       </main>
 
       <Footer />
+
+      <FloatingHudRail />
 
       <CompareModal
         selectedProducts={comparedProducts}
