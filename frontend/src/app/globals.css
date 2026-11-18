@@ -410,7 +410,47 @@ body {
   animation: orbitSlow 16s linear infinite reverse;
 }
 
+/* Scroll-Triggered Spatial Reveal & Optical Focus Stages */
+.scroll-stage {
+  will-change: transform, opacity, filter;
+  transition:
+    opacity 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 680ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.scroll-stage-rise {
+  opacity: 0;
+  transform: translate3d(0, 26px, 0);
+}
+
+.scroll-stage-iris {
+  opacity: 0;
+  transform: translate3d(0, 22px, 0) scale(0.97);
+  filter: blur(2px);
+}
+
+.scroll-stage-prism {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0) scale(0.985);
+}
+
+.scroll-stage-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  filter: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .scroll-stage,
+  .scroll-stage-rise,
+  .scroll-stage-iris,
+  .scroll-stage-prism {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
+  }
   .animate-lantern-sway,
   .animate-lantern-breath,
   .animate-mist,

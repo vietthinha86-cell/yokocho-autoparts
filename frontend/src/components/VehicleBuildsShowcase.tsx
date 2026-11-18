@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Check, Layers, ShoppingBag, Sparkles } from "lucide-react";
 import { formatVnd } from "@/lib/api";
 import type { AutoPartProduct, VehicleBuildCombo } from "@/types/autoparts";
+import { ScrollRevealStage } from "./ScrollRevealStage";
 
 interface VehicleBuildsShowcaseProps {
   combos: VehicleBuildCombo[];
@@ -18,7 +19,8 @@ export function VehicleBuildsShowcase({
 }: VehicleBuildsShowcaseProps) {
   return (
     <section id="builds" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-      <div className="mb-8 flex flex-col justify-between gap-4 border-b border-red-800/45 pb-6 md:flex-row md:items-end">
+      <ScrollRevealStage variant="rise">
+        <div className="mb-8 flex flex-col justify-between gap-4 border-b border-red-800/45 pb-6 md:flex-row md:items-end">
         <div>
           <p className="flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.2em] text-[#ff4d5e] uppercase">
             <span>XE ĐÃ LÊN ĐÈN THỰC TẾ</span>
@@ -32,7 +34,8 @@ export function VehicleBuildsShowcase({
           Chưa biết ghép đèn thế nào? Chọn ngay cấu hình đã test thực tế dưới mưa —{" "}
           <span className="font-bold text-amber-300">thêm cả combo vào giỏ chỉ 1 chạm</span>.
         </p>
-      </div>
+        </div>
+      </ScrollRevealStage>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {combos.map((combo, index) => {
@@ -46,10 +49,15 @@ export function VehicleBuildsShowcase({
           );
 
           return (
-            <article
+            <ScrollRevealStage
               key={combo.id}
-              className="lantern-card chamfer-card group flex flex-col overflow-hidden"
+              variant="iris"
+              delayMs={index * 95}
+              className="flex h-full [&>*]:w-full"
             >
+              <article
+                className="lantern-card chamfer-card group flex flex-col overflow-hidden"
+              >
               {/* Animated Showcase Photo */}
               <div className="relative aspect-[16/10] w-full overflow-hidden border-b border-red-800/45 bg-black">
                 <div
@@ -138,7 +146,8 @@ export function VehicleBuildsShowcase({
                   </button>
                 </div>
               </div>
-            </article>
+              </article>
+            </ScrollRevealStage>
           );
         })}
       </div>

@@ -16,6 +16,7 @@ import { useMemo, useRef, useState } from "react";
 import { submitCustomerReview } from "@/lib/api";
 import { compressImageFileToDataUrl } from "@/lib/imageUtils";
 import { useCustomerSession } from "@/lib/useCustomerSession";
+import { ScrollRevealStage } from "./ScrollRevealStage";
 import type {
   AutoPartProduct,
   BeamModeChoice,
@@ -442,13 +443,18 @@ export function CustomerReviewsSection({
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {displayedReviews.map((review) => {
+          {displayedReviews.map((review, idx) => {
             const linkedProduct = productLookup.get(review.productId);
             return (
-              <article
+              <ScrollRevealStage
                 key={review.id}
-                className="lantern-card chamfer-card flex flex-col overflow-hidden"
+                variant="iris"
+                delayMs={(idx % 4) * 75}
+                className="flex h-full [&>*]:w-full"
               >
+                <article
+                  className="lantern-card chamfer-card flex flex-col overflow-hidden"
+                >
                 {review.photoUrl && (
                   <button
                     type="button"
@@ -519,7 +525,8 @@ export function CustomerReviewsSection({
                     )}
                   </div>
                 </div>
-              </article>
+                </article>
+              </ScrollRevealStage>
             );
           })}
         </div>

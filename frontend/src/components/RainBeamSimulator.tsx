@@ -4,6 +4,7 @@ import Image from "next/image";
 import { CloudRain, Eye, Flame, Moon, SplitSquareHorizontal, Sun, Zap } from "lucide-react";
 import { useRef, useState } from "react";
 import { MidnightRainCanvas, type RainBeamColorMode } from "./MidnightRainCanvas";
+import { ScrollRevealStage } from "./ScrollRevealStage";
 
 type BeamMode = RainBeamColorMode;
 
@@ -163,24 +164,27 @@ export function RainBeamSimulator({
       className="border-y border-red-800/45 bg-[#040203] py-16"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-          <div>
-            <p className="flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.2em] text-[#ff4d5e] uppercase">
-              <span>PHÒNG THỬ ÁNH SÁNG LIVE</span>
-              <span className="font-jp text-zinc-500">夜間テスト</span>
+        <ScrollRevealStage variant="rise">
+          <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div>
+              <p className="flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.2em] text-[#ff4d5e] uppercase">
+                <span>PHÒNG THỬ ÁNH SÁNG LIVE</span>
+                <span className="font-jp text-zinc-500">夜間テスト</span>
+              </p>
+              <h2 className="font-display mt-1.5 text-2xl leading-[1.2] font-bold tracking-[-0.02em] text-[#f3ede8] sm:text-3xl">
+                Trải Nghiệm Rọi Đèn Xuyên Con Hẻm Mưa Đêm
+              </h2>
+            </div>
+            <p className="max-w-md text-sm text-zinc-300">
+              Kéo thanh gạt để đối chiếu <span className="font-semibold text-amber-300">Halogen Zin 35W</span>{" "}
+              với đường cắt Bi-LED Laser thực tế, hoặc bấm{" "}
+              <span className="font-bold text-sky-300">Đá Pha Laser (+80W)</span>.
             </p>
-            <h2 className="font-display mt-1.5 text-2xl leading-[1.2] font-bold tracking-[-0.02em] text-[#f3ede8] sm:text-3xl">
-              Trải Nghiệm Rọi Đèn Xuyên Con Hẻm Mưa Đêm
-            </h2>
           </div>
-          <p className="max-w-md text-sm text-zinc-300">
-            Kéo thanh gạt để đối chiếu <span className="font-semibold text-amber-300">Halogen Zin 35W</span>{" "}
-            với đường cắt Bi-LED Laser thực tế, hoặc bấm{" "}
-            <span className="font-bold text-sky-300">Đá Pha Laser (+80W)</span>.
-          </p>
-        </div>
+        </ScrollRevealStage>
 
-        <div className="grid gap-6 lg:grid-cols-12">
+        <ScrollRevealStage variant="prism">
+          <div className="grid gap-6 lg:grid-cols-12">
           {/* Interactive Live Dark Alley Projection Viewport */}
           <div className="yokocho-panel chamfer-md relative overflow-hidden lg:col-span-8">
             <div className="relative h-80 w-full select-none sm:h-[440px]">
@@ -485,7 +489,8 @@ export function RainBeamSimulator({
               giúp đi mưa bão hay sương mù đèo đều thấy rõ vạch đường.
             </div>
           </div>
-        </div>
+          </div>
+        </ScrollRevealStage>
       </div>
     </section>
   );

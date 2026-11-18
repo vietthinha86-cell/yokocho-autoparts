@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { ArrowDownRight, Eye, ShieldCheck, Sparkles, Wrench } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChochinLantern } from "./ChochinLantern";
 import { MidnightRainCanvas, type CanvasPointerTarget } from "./MidnightRainCanvas";
 
@@ -16,6 +16,35 @@ const NOREN_PANELS = [
 export function HeroAlley() {
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
   const pointerRef = useRef<CanvasPointerTarget>({ x: 0, y: 0, active: false });
+  const scrollLayerRef = useRef<HTMLDivElement | null>(null);
+  const ringScrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let rafId = 0;
+    const applyScrollDepth = () => {
+      rafId = 0;
+      const y = Math.min(window.scrollY, 700);
+      if (scrollLayerRef.current) {
+        const shiftY = (y * 0.14).toFixed(1);
+        const scale = (1 + y * 0.00014).toFixed(4);
+        scrollLayerRef.current.style.transform = `translate3d(0, ${shiftY}px, 0) scale(${scale})`;
+      }
+      if (ringScrollRef.current) {
+        const rot = (y * 0.12).toFixed(1);
+        const lift = (y * -0.08).toFixed(1);
+        ringScrollRef.current.style.transform = `translate3d(0, ${lift}px, 0) rotate(${rot}deg)`;
+      }
+    };
+    const onScroll = () => {
+      if (!rafId) rafId = window.requestAnimationFrame(applyScrollDepth);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
 
   function handleMouseMove(e: React.MouseEvent<HTMLElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -41,18 +70,23 @@ export function HeroAlley() {
     >
       {/* Parallax + Living Cinemagraph Photograph */}
       <div
-        className="pointer-events-none absolute -inset-4 transition-transform duration-300 ease-out"
-        style={{ transform: `translate3d(${parallax.x}px, ${parallax.y}px, 0)` }}
+        ref={scrollLayerRef}
+        className="pointer-events-none absolute -inset-4 will-change-transform"
       >
-        <div className="animate-hero-cinema relative h-full w-full">
-          <Image
-            src="/images/hero-yokocho.jpg"
-            alt="Con hẻm đêm mưa Nhật Bản cùng xe JDM và đèn lồng đỏ Akari Yokocho"
-            fill
-            priority
-            sizes="100vw"
-            className="photo-razor object-cover object-center"
-          />
+        <div
+          className="h-full w-full transition-transform duration-300 ease-out"
+          style={{ transform: `translate3d(${parallax.x}px, ${parallax.y}px, 0)` }}
+        >
+          <div className="animate-hero-cinema relative h-full w-full">
+            <Image
+              src="/images/hero-yokocho.jpg"
+              alt="Con hẻm đêm mưa Nhật Bản cùng xe JDM và đèn lồng đỏ Akari Yokocho"
+              fill
+              priority
+              sizes="100vw"
+              className="photo-razor object-cover object-center"
+            />
+          </div>
         </div>
       </div>
 
@@ -67,19 +101,24 @@ export function HeroAlley() {
 
       {/* Montfort-Inspired Spatial Bi-LED Glass Ring Emblem at Optical Vortex Core */}
       <div
+        ref={ringScrollRef}
         aria-hidden="true"
-        className="pointer-events-none absolute top-[24%] right-[14%] z-[7] hidden h-48 w-48 items-center justify-center transition-transform duration-300 ease-out lg:flex"
-        style={{
-          transform: `translate3d(${(-parallax.x * 0.7).toFixed(1)}px, ${(-parallax.y * 0.7).toFixed(1)}px, 0)`,
-        }}
+        className="pointer-events-none absolute top-[24%] right-[14%] z-[7] hidden h-48 w-48 items-center justify-center will-change-transform lg:flex"
       >
-        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(255,46,67,0.22)_0%,rgba(245,158,11,0.1)_48%,transparent_72%)] blur-xl" />
-        <div className="animate-orbit-slow absolute inset-2 rounded-full border border-dashed border-amber-400/35" />
-        <div className="animate-orbit-reverse absolute inset-7 rounded-full border border-[#ff2e43]/55 shadow-[0_0_24px_rgba(255,46,67,0.35),inset_0_0_20px_rgba(245,158,11,0.18)]" />
-        <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-white/25 bg-black/35 shadow-[0_0_32px_rgba(255,46,67,0.45),inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-[2px]">
-          <span className="font-jp text-2xl font-black text-amber-300/90 drop-shadow-[0_0_12px_rgba(245,158,11,0.8)]">
-            光
-          </span>
+        <div
+          className="relative flex h-full w-full items-center justify-center transition-transform duration-300 ease-out"
+          style={{
+            transform: `translate3d(${(-parallax.x * 0.7).toFixed(1)}px, ${(-parallax.y * 0.7).toFixed(1)}px, 0)`,
+          }}
+        >
+          <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(255,46,67,0.22)_0%,rgba(245,158,11,0.1)_48%,transparent_72%)] blur-xl" />
+          <div className="animate-orbit-slow absolute inset-2 rounded-full border border-dashed border-amber-400/35" />
+          <div className="animate-orbit-reverse absolute inset-7 rounded-full border border-[#ff2e43]/55 shadow-[0_0_24px_rgba(255,46,67,0.35),inset_0_0_20px_rgba(245,158,11,0.18)]" />
+          <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-white/25 bg-black/35 shadow-[0_0_32px_rgba(255,46,67,0.45),inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-[2px]">
+            <span className="font-jp text-2xl font-black text-amber-300/90 drop-shadow-[0_0_12px_rgba(245,158,11,0.8)]">
+              光
+            </span>
+          </div>
         </div>
       </div>
 

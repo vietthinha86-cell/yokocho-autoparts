@@ -33,6 +33,7 @@ import { OrderLookup } from "./OrderLookup";
 import { ProductCard } from "./ProductCard";
 import { ProductModal } from "./ProductModal";
 import { RainBeamSimulator } from "./RainBeamSimulator";
+import { ScrollRevealStage } from "./ScrollRevealStage";
 import { VehicleBuildsShowcase } from "./VehicleBuildsShowcase";
 
 interface StorefrontClientProps {
@@ -216,7 +217,8 @@ export function StorefrontClient({
 
         {/* Product Catalog Section */}
         <section id="catalog" className="relative mx-auto max-w-7xl px-4 pt-16 pb-14 sm:px-6 lg:px-8">
-          <div className="relative flex flex-col justify-between gap-5 overflow-hidden border-b border-red-800/45 pb-6 md:flex-row md:items-end">
+          <ScrollRevealStage variant="rise">
+            <div className="relative flex flex-col justify-between gap-5 overflow-hidden border-b border-red-800/45 pb-6 md:flex-row md:items-end">
             {catalogSweepKey > 0 && (
               <div
                 key={catalogSweepKey}
@@ -257,7 +259,8 @@ export function StorefrontClient({
                 );
               })}
             </div>
-          </div>
+            </div>
+          </ScrollRevealStage>
 
           {/* Advanced Technical Filter & Sort Strip */}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-red-900/40 bg-[#0b0407]/90 px-4 py-3 text-xs">
@@ -362,15 +365,21 @@ export function StorefrontClient({
           ) : (
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {filteredProducts.map((product, index) => (
-                <ProductCard
+                <ScrollRevealStage
                   key={product.id}
-                  product={product}
-                  index={index}
-                  isCompared={compareIds.includes(product.id)}
-                  onSelect={(p) => setActiveProduct(p)}
-                  onQuickAdd={(p) => addToCart(p)}
-                  onToggleCompare={handleToggleCompare}
-                />
+                  variant="iris"
+                  delayMs={(index % 3) * 85}
+                  className="flex h-full [&>*]:w-full"
+                >
+                  <ProductCard
+                    product={product}
+                    index={index}
+                    isCompared={compareIds.includes(product.id)}
+                    onSelect={(p) => setActiveProduct(p)}
+                    onQuickAdd={(p) => addToCart(p)}
+                    onToggleCompare={handleToggleCompare}
+                  />
+                </ScrollRevealStage>
               ))}
             </div>
           )}

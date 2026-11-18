@@ -2,6 +2,7 @@
 
 import { Bot, Car, Search, X } from "lucide-react";
 import type { VehicleFitment } from "@/types/autoparts";
+import { ScrollRevealStage } from "./ScrollRevealStage";
 
 interface FitmentBarProps {
   fitments: VehicleFitment[];
@@ -24,7 +25,8 @@ export function FitmentBar({
 
   return (
     <section id="fitment" className="relative z-20 mx-auto -mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div className="yokocho-panel lantern-glow chamfer-md relative p-5 backdrop-blur-xl sm:p-6">
+      <ScrollRevealStage variant="prism">
+        <div className="yokocho-panel lantern-glow chamfer-md relative p-5 backdrop-blur-xl sm:p-6">
         {/* Japanese HUD Corner Ticks */}
         <span className="pointer-events-none absolute top-0 left-0 h-3 w-3 border-t-2 border-l-2 border-[#ff2e43]" />
         <span className="pointer-events-none absolute right-0 bottom-0 h-3 w-3 border-r-2 border-b-2 border-[#ff2e43]" />
@@ -125,7 +127,8 @@ export function FitmentBar({
             </div>
           </div>
         )}
-      </div>
+        </div>
+      </ScrollRevealStage>
     </section>
   );
 }

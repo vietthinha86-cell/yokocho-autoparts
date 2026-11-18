@@ -12,6 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import { formatVnd, lookupOrder } from "@/lib/api";
 import type { OrderRecord } from "@/types/autoparts";
+import { ScrollRevealStage } from "./ScrollRevealStage";
 
 interface OrderLookupProps {
   lastOrderCode?: string;
@@ -90,7 +91,8 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
 
   return (
     <section id="order-lookup" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-      <div className="grid gap-6 lg:grid-cols-12">
+      <ScrollRevealStage variant="prism">
+        <div className="grid gap-6 lg:grid-cols-12">
         {/* Order Lookup Card */}
         <div className="yokocho-panel chamfer-md relative p-6 lg:col-span-6">
           <span className="pointer-events-none absolute top-0 left-0 h-2.5 w-2.5 border-t border-l border-[#ff2e43]" />
@@ -274,7 +276,8 @@ export function OrderLookup({ lastOrderCode }: OrderLookupProps) {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      </ScrollRevealStage>
     </section>
   );
 }

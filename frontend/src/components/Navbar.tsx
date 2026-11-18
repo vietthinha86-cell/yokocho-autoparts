@@ -2,6 +2,7 @@
 
 import { Bot, ShoppingBag, Sparkles, User, UserCheck, Wifi, WifiOff } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { useCustomerSession } from "@/lib/useCustomerSession";
 import { ChochinLantern } from "./ChochinLantern";
 
@@ -14,6 +15,35 @@ interface NavbarProps {
 
 export function Navbar({ cartCount, apiConnected, onOpenCart, onOpenAi }: NavbarProps) {
   const { customer } = useCustomerSession();
+  const progressBarRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    let rafId = 0;
+    const updateProgress = () => {
+      rafId = 0;
+      const bar = progressBarRef.current;
+      if (!bar) return;
+      const maxScroll = Math.max(
+        1,
+        document.documentElement.scrollHeight - window.innerHeight,
+      );
+      const ratio = Math.min(1, Math.max(0, window.scrollY / maxScroll));
+      bar.style.transform = `scaleX(${ratio.toFixed(4)})`;
+    };
+
+    const onScroll = () => {
+      if (!rafId) {
+        rafId = window.requestAnimationFrame(updateProgress);
+      }
+    };
+
+    updateProgress();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 border-b border-red-800/45 bg-[#060305]/88 backdrop-blur-xl">
@@ -113,6 +143,15 @@ export function Navbar({ cartCount, apiConnected, onOpenCart, onOpenAi }: Navbar
             </span>
           </button>
         </div>
+      </div>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] overflow-hidden bg-transparent"
+      >
+        <div
+          ref={progressBarRef}
+          className="h-full w-full origin-left scale-x-0 bg-gradient-to-r from-[#ff2e43] via-amber-400 to-[#ff2e43] shadow-[0_0_12px_#ff2e43]"
+        />
       </div>
     </header>
   );
