@@ -19,11 +19,14 @@ export interface CustomerTokenPayload {
 }
 
 export function getJwtSecret(override?: string): string {
-  return (
-    override?.trim() ||
-    process.env.JWT_SECRET?.trim() ||
-    "akari-yokocho-dev-jwt-secret-change-me"
-  );
+  const configured = override?.trim() || process.env.JWT_SECRET?.trim();
+  if (configured) {
+    return configured;
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET environment variable must be set in production.");
+  }
+  return "akari-yokocho-dev-jwt-secret-change-me";
 }
 
 export function normalizePhone(raw: string): string {

@@ -20,10 +20,12 @@ export function verifyWebhookSignature(
   providedSignature: string | undefined,
   secretOverride?: string,
 ): boolean {
-  const secret =
-    secretOverride?.trim() ||
-    process.env.PAYMENT_WEBHOOK_SECRET?.trim() ||
-    "yokocho-vietqr-dev-secret";
+  const configuredSecret =
+    secretOverride?.trim() || process.env.PAYMENT_WEBHOOK_SECRET?.trim();
+  if (!configuredSecret && process.env.NODE_ENV === "production") {
+    return false;
+  }
+  const secret = configuredSecret || "yokocho-vietqr-dev-secret";
 
   if (!providedSignature) {
     return false;
