@@ -12,7 +12,8 @@
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "node --experimental-strip-types prisma/seed.ts"
+    "db:seed": "node --experimental-strip-types prisma/seed.ts",
+    "db:setup": "node --experimental-strip-types scripts/setup-db.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

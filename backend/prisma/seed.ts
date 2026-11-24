@@ -1,5 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import fs from "node:fs";
+import path from "node:path";
 import {
   AUTO_PARTS_CATALOG,
   DEFAULT_DEMO_CUSTOMER_SEED,
@@ -8,16 +10,146 @@ import {
   VEHICLE_COMBOS,
   VEHICLE_FITMENTS,
 } from "../src/data/catalog.ts";
+import { loadProjectEnv } from "../src/envLoader.ts";
+import type {
+  AutoPartProduct,
+  OrderRecord,
+  ProductReviewRecord,
+} from "../src/types.ts";
+import type { StoredCustomerAccount } from "../src/store/repository.ts";
 
-try {
-  process.loadEnvFile?.();
-} catch {
-  // .env file is optional when DATABASE_URL is injected via environment
+loadProjectEnv(true);
+
+async function syncRuntimeJsonSnapshot(prisma: PrismaClient): Promise<void> {
+  const runtimePath = path.resolve(import.meta.dirname, "../data/store.runtime.json");
+  if (!fs.existsSync(runtimePath)) {
+    return;
+  }
+  try {
+    const raw = fs.readFileSync(runtimePath, "utf8");
+    const parsed = JSON.parse(raw) as {
+      products?: AutoPartProduct[];
+      orders?: OrderRecord[];
+      customers?: StoredCustomerAccount[];
+      reviews?: ProductReviewRecord[];
+    };
+
+    if (Array.isArray(parsed.products)) {
+      for (const product of parsed.products) {
+        await prisma.product.upsert({
+          where: { id: product.id },
+          update: {},
+          create: {
+            id: product.id,
+            slug: product.slug,
+            sku: product.sku,
+            oemRef: product.oemRef,
+            nameVi: product.nameVi,
+            nameJp: product.nameJp,
+            kanjiMark: product.kanjiMark ?? null,
+            brand: product.brand,
+            category: product.category,
+            priceVnd: product.priceVnd,
+            originalPriceVnd: product.originalPriceVnd ?? null,
+            stockStatus: product.stockStatus,
+            stockQty: product.stockQty,
+            image: product.image,
+            badgeText: product.badgeText,
+            compatibleVehicles: product.compatibleVehicles,
+            specsJson: (product.specs as unknown) as Prisma.InputJsonValue,
+            summaryVi: product.summaryVi,
+            highlights: product.highlights,
+          },
+        });
+      }
+    }
+
+    if (Array.isArray(parsed.customers)) {
+      for (const customer of parsed.customers) {
+        await prisma.customerUser.upsert({
+          where: { id: customer.id },
+          update: {},
+          create: {
+            id: customer.id,
+            fullName: customer.fullName,
+            phone: customer.phone ?? null,
+            email: customer.email ?? null,
+            passwordHash: customer.passwordHash,
+            shippingAddress: customer.shippingAddress ?? null,
+            garageVehiclesJson: (customer.garageVehicles as unknown) as Prisma.InputJsonValue,
+          },
+        });
+      }
+    }
+
+    if (Array.isArray(parsed.orders)) {
+      for (const order of parsed.orders) {
+        await prisma.order.upsert({
+          where: { orderCode: order.orderCode },
+          update: {},
+          create: {
+            orderCode: order.orderCode,
+            customerId: order.customerId ?? null,
+            customerName: order.customerName,
+            phone: order.phone,
+            vehicleInfo: order.vehicleInfo,
+            shippingAddress: order.shippingAddress,
+            note: order.note ?? null,
+            subtotalVnd: order.subtotalVnd,
+            shippingFeeVnd: order.shippingFeeVnd,
+            totalVnd: order.totalVnd,
+            paymentStatus: order.paymentStatus ?? "unpaid",
+            paymentRef: order.paymentRef ?? null,
+            status: order.status,
+            createdAt: new Date(order.createdAt),
+            items: {
+              create: order.items.map((item) => ({
+                productId: item.productId,
+                sku: item.sku,
+                nameVi: item.nameVi,
+                quantity: item.quantity,
+                selectedKelvin: item.selectedKelvin ?? null,
+                unitPriceVnd: item.unitPriceVnd,
+                lineTotalVnd: item.lineTotalVnd,
+              })),
+            },
+          },
+        });
+      }
+    }
+
+    if (Array.isArray(parsed.reviews)) {
+      for (const rev of parsed.reviews) {
+        await prisma.productReview.upsert({
+          where: { id: rev.id },
+          update: {},
+          create: {
+            id: rev.id,
+            productId: rev.productId,
+            customerId: rev.customerId ?? null,
+            customerName: rev.customerName,
+            vehicleInfo: rev.vehicleInfo,
+            rating: rev.rating,
+            title: rev.title,
+            comment: rev.comment,
+            beamMode: rev.beamMode ?? null,
+            photoUrl: rev.photoUrl ?? null,
+            verifiedPurchase: rev.verifiedPurchase,
+            orderCode: rev.orderCode ?? null,
+            status: rev.status,
+            adminNote: rev.adminNote ?? null,
+            createdAt: new Date(rev.createdAt),
+          },
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("Runtime JSON sync skipped:", err instanceof Error ? err.message : err);
+  }
 }
 
-const prisma = new PrismaClient();
-
-async function main() {
+export async function seedDatabase(externalPrisma?: PrismaClient): Promise<void> {
+  const prisma = externalPrisma ?? new PrismaClient();
   console.log("==> Seeding Akari Yokocho PostgreSQL database...");
 
   for (const product of AUTO_PARTS_CATALOG) {
@@ -203,16 +335,24 @@ async function main() {
     });
   }
 
+  await syncRuntimeJsonSnapshot(prisma);
+
   console.log(
     `==> Seeded ${AUTO_PARTS_CATALOG.length} products, ${VEHICLE_FITMENTS.length} fitments, ${VEHICLE_COMBOS.length} combos, ${DEFAULT_PRODUCT_REVIEWS.length} reviews, demo customer, and admin '${adminUsername}'.`,
   );
+
+  if (!externalPrisma) {
+    await prisma.$disconnect();
+  }
 }
 
-main()
-  .catch((err) => {
+const isDirectExecution =
+  Boolean(process.argv[1]) &&
+  path.resolve(process.argv[1]) === path.resolve(import.meta.filename);
+
+if (isDirectExecution) {
+  seedDatabase().catch((err) => {
     console.error("Seed error:", err);
     process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
   });
+}

@@ -17,6 +17,10 @@ Tài liệu này hướng dẫn từng bước đưa web từ máy cá nhân lê
 
 ## 2. Cấu Hình Deploy Từng Bước
 
+### Thiết lập PostgreSQL 18 cục bộ bằng 1 lệnh (`backend/`)
+1. Mở `backend/.env`, bỏ `#` và điền mật khẩu PostgreSQL 18 tại `DATABASE_URL=postgresql://postgres:<password>@localhost:5432/yokocho_autoparts`.
+2. Chạy `npm run db:setup` trong `backend/` để tự động tạo database `yokocho_autoparts`, chạy toàn bộ Prisma migrations (`0001_init` → `0003_customers`), seed dữ liệu và đồng bộ mọi đơn hàng/tài khoản có sẵn từ `data/store.runtime.json`.
+
 ### Bước A — Deploy Backend lên Render / Railway
 1. Kết nối repo GitHub `vietthinha86-cell/yokocho-autoparts`.
 2. Chọn **Root Directory**: `backend`.
