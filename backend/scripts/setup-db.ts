@@ -102,9 +102,6 @@ async function main(): Promise<void> {
   console.log("==> Chạy Prisma migrate deploy...");
   runPrismaCli(["migrate", "deploy"]);
 
-  console.log("==> Cập nhật Prisma Client...");
-  runPrismaCli(["generate"]);
-
   const prisma = new PrismaClient();
   try {
     await seedDatabase(prisma);

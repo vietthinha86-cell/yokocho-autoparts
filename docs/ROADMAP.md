@@ -29,7 +29,7 @@ Dự án được chia thành **4 Phase** rõ ràng để bạn có thể phát 
 ## Phase 2 — Cơ Sở Dữ Liệu Thật & Trang Chi Tiết / Quản Trị (Tuần 1–2)
 
 ### Backend
-- [ ] Chuyển lưu trữ trực tiếp sang **PostgreSQL 18** cục bộ (đã hoàn thiện `Prisma schema`, `migration SQL`, `seed.ts` & `PrismaRepository`, chờ cấp `DATABASE_URL`)
+- [x] Chuyển lưu trữ trực tiếp sang **PostgreSQL 18** cục bộ (database `yokocho_autoparts`, Prisma migrations `0001_init` → `0003_customers`, `PrismaRepository`, `seed.ts` & lệnh `npm run db:setup`)
 - [x] Thiết kế bảng: `Product`, `VehicleFitment`, `VehicleBuildCombo`, `Order`, `OrderItem`, `AdminUser`, `DailyInventoryLog`
 - [x] Thêm API CRUD sản phẩm & cập nhật trạng thái đơn cho Admin (`PATCH /api/admin/orders/:orderCode/status`)
 - [x] Xác thực Admin bằng JWT + bcrypt (`POST /api/auth/login`)
