@@ -82,6 +82,8 @@ export interface OrderRecord {
   note?: string;
   items: OrderItemRecord[];
   subtotalVnd: number;
+  discountVnd?: number;
+  voucherCode?: string;
   shippingFeeVnd: number;
   totalVnd: number;
   paymentStatus?: "unpaid" | "paid";
@@ -149,4 +151,56 @@ export interface ProductReviewRecord {
   status: ReviewStatus;
   adminNote?: string;
   createdAt: string;
+}
+
+export type VoucherDiscountType = "percent" | "fixed";
+
+export interface VoucherRecord {
+  id: string;
+  code: string;
+  title: string;
+  descriptionVi: string;
+  discountType: VoucherDiscountType;
+  discountValue: number;
+  minOrderVnd: number;
+  maxDiscountVnd?: number;
+  usageLimit?: number;
+  usedCount: number;
+  active: boolean;
+  expiresAt?: string;
+  createdAt: string;
+}
+
+export type GarageBranchId = "hcm_q7" | "hcm_binhthanh" | "hn_caugiay";
+
+export type InstallationServiceType =
+  | "bi_led_retrofit"
+  | "bi_fog_install"
+  | "tail_light_plug"
+  | "combo_full_night"
+  | "beam_alignment";
+
+export type BookingStatus =
+  | "pending"
+  | "confirmed"
+  | "in_bay"
+  | "completed"
+  | "cancelled";
+
+export interface InstallationBookingRecord {
+  id: string;
+  bookingCode: string;
+  customerId?: string;
+  orderCode?: string;
+  customerName: string;
+  phone: string;
+  vehicleInfo: string;
+  garageBranch: GarageBranchId;
+  serviceType: InstallationServiceType;
+  bookingDate: string;
+  timeSlot: string;
+  note?: string;
+  status: BookingStatus;
+  createdAt: string;
+  updatedAt: string;
 }

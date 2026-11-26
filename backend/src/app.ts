@@ -36,7 +36,11 @@ import { toPublicCustomer, type GarageRepository } from "./store/repository.ts";
 import type {
   AutoPartProduct,
   BeamModeChoice,
+  BookingStatus,
   CustomerGarageVehicle,
+  GarageBranchId,
+  InstallationBookingRecord,
+  InstallationServiceType,
   OrderItemInput,
   OrderItemRecord,
   OrderRecord,
@@ -44,6 +48,8 @@ import type {
   ProductReviewRecord,
   ReviewStatus,
   StockStatus,
+  VoucherDiscountType,
+  VoucherRecord,
 } from "./types.ts";
 
 export interface AppOptions {
@@ -71,6 +77,66 @@ const VALID_ORDER_STATUS: OrderRecord["status"][] = [
 ];
 const VALID_REVIEW_STATUS: ReviewStatus[] = ["pending", "approved", "rejected"];
 const VALID_BEAM_MODES: BeamModeChoice[] = ["3000k", "4300k", "6000k", "combo"];
+const VALID_BRANCHES: GarageBranchId[] = ["hcm_q7", "hcm_binhthanh", "hn_caugiay"];
+const VALID_SERVICE_TYPES: InstallationServiceType[] = [
+  "bi_led_retrofit",
+  "bi_fog_install",
+  "tail_light_plug",
+  "combo_full_night",
+  "beam_alignment",
+];
+const VALID_BOOKING_STATUS: BookingStatus[] = [
+  "pending",
+  "confirmed",
+  "in_bay",
+  "completed",
+  "cancelled",
+];
+const BOOKING_TIME_SLOTS = ["09:00", "11:00", "14:00", "16:30", "19:00"] as const;
+const MAX_BAYS_PER_SLOT = 2;
+
+function generateBookingCode(): string {
+  const randomPart = Math.random().toString(36).slice(2, 6).toUpperCase();
+  const timePart = Date.now().toString().slice(-4);
+  return `BK-${timePart}-${randomPart}`;
+}
+
+function evaluateVoucher(
+  voucher: VoucherRecord | null,
+  subtotalVnd: number,
+):
+  | { valid: true; voucher: VoucherRecord; discountVnd: number }
+  | { valid: false; error: string } {
+  if (!voucher) {
+    return { valid: false, error: "Mã giảm giá không tồn tại trên hệ thống." };
+  }
+  if (!voucher.active) {
+    return { valid: false, error: `Mã ${voucher.code} hiện đang tạm ngưng.` };
+  }
+  if (voucher.expiresAt && new Date(voucher.expiresAt).getTime() < Date.now()) {
+    return { valid: false, error: `Mã ${voucher.code} đã hết hạn sử dụng.` };
+  }
+  if (typeof voucher.usageLimit === "number" && voucher.usedCount >= voucher.usageLimit) {
+    return { valid: false, error: `Mã ${voucher.code} đã hết lượt sử dụng.` };
+  }
+  if (subtotalVnd < voucher.minOrderVnd) {
+    return {
+      valid: false,
+      error: `Mã ${voucher.code} áp dụng cho đơn từ ${new Intl.NumberFormat("vi-VN").format(voucher.minOrderVnd)}₫.`,
+    };
+  }
+  let discountVnd = 0;
+  if (voucher.discountType === "percent") {
+    discountVnd = Math.round((subtotalVnd * voucher.discountValue) / 100);
+    if (typeof voucher.maxDiscountVnd === "number" && voucher.maxDiscountVnd > 0) {
+      discountVnd = Math.min(discountVnd, voucher.maxDiscountVnd);
+    }
+  } else {
+    discountVnd = voucher.discountValue;
+  }
+  discountVnd = Math.max(0, Math.min(subtotalVnd, discountVnd));
+  return { valid: true, voucher, discountVnd };
+}
 
 function sanitizeReviewPhotoUrl(raw: unknown): string | undefined {
   if (typeof raw !== "string") return undefined;
@@ -331,6 +397,23 @@ export function createApp(options: AppOptions = {}) {
         (sum, item) => sum + item.lineTotalVnd,
         0,
       );
+      const rawVoucherCode =
+        typeof body.voucherCode === "string" && body.voucherCode.trim()
+          ? body.voucherCode.trim().toUpperCase()
+          : undefined;
+      let appliedVoucherCode: string | undefined;
+      let discountVnd = 0;
+      if (rawVoucherCode) {
+        const foundVoucher = await repo.findVoucherByCode(rawVoucherCode);
+        const evalResult = evaluateVoucher(foundVoucher, subtotalVnd);
+        if (!evalResult.valid) {
+          res.status(400).json({ error: evalResult.error });
+          return;
+        }
+        appliedVoucherCode = evalResult.voucher.code;
+        discountVnd = evalResult.discountVnd;
+      }
+
       const shippingFeeVnd =
         subtotalVnd >= FREE_SHIPPING_THRESHOLD_VND ? 0 : STANDARD_SHIPPING_FEE_VND;
       const optionalCustomer = extractOptionalCustomer(req, options.jwtSecret);
@@ -344,14 +427,19 @@ export function createApp(options: AppOptions = {}) {
         note,
         items: orderItems,
         subtotalVnd,
+        discountVnd,
+        voucherCode: appliedVoucherCode,
         shippingFeeVnd,
-        totalVnd: subtotalVnd + shippingFeeVnd,
+        totalVnd: Math.max(0, subtotalVnd - discountVnd + shippingFeeVnd),
         paymentStatus: "unpaid",
         status: "pending_confirm",
         createdAt: new Date().toISOString(),
       };
 
       const created = await repo.createOrder(order);
+      if (appliedVoucherCode) {
+        await repo.incrementVoucherUsage(appliedVoucherCode);
+      }
       void notifier.notifyOrderCreated(created);
       res.status(201).json({ item: created });
     } catch (err) {
@@ -367,6 +455,186 @@ export function createApp(options: AppOptions = {}) {
         return;
       }
       res.json({ item: order });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // --- Public Vouchers & Validation (Phase 3.5) ---
+  app.get("/api/vouchers/public", async (_req, res, next) => {
+    try {
+      const items = await repo.listVouchers({ activeOnly: true });
+      res.json({ items });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post("/api/vouchers/validate", async (req, res, next) => {
+    try {
+      const body = req.body as Record<string, unknown>;
+      const code = typeof body.code === "string" ? body.code.trim().toUpperCase() : "";
+      const subtotalVnd = Number(body.subtotalVnd ?? 0);
+      if (!code) {
+        res.status(400).json({ error: "Vui lòng nhập mã giảm giá." });
+        return;
+      }
+      if (!Number.isFinite(subtotalVnd) || subtotalVnd <= 0) {
+        res.status(400).json({ error: "Giá trị tạm tính không hợp lệ." });
+        return;
+      }
+      const voucher = await repo.findVoucherByCode(code);
+      const evalResult = evaluateVoucher(voucher, subtotalVnd);
+      if (!evalResult.valid) {
+        res.status(400).json({ valid: false, error: evalResult.error });
+        return;
+      }
+      res.json({
+        valid: true,
+        voucher: evalResult.voucher,
+        discountVnd: evalResult.discountVnd,
+        finalSubtotalVnd: Math.max(0, subtotalVnd - evalResult.discountVnd),
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // --- Garage Installation Booking Slots & Reservations (Phase 3.5) ---
+  app.get("/api/bookings/slots", async (req, res, next) => {
+    try {
+      const rawDate =
+        typeof req.query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date.trim())
+          ? req.query.date.trim()
+          : new Date().toISOString().slice(0, 10);
+      const rawBranch =
+        typeof req.query.branch === "string" ? req.query.branch.trim() : "hcm_q7";
+      const branch: GarageBranchId = VALID_BRANCHES.includes(rawBranch as GarageBranchId)
+        ? (rawBranch as GarageBranchId)
+        : "hcm_q7";
+
+      const existing = await repo.listBookings({ date: rawDate, branch });
+      const activeBookings = existing.filter((b) => b.status !== "cancelled");
+
+      const slots = BOOKING_TIME_SLOTS.map((timeSlot) => {
+        const bookedCount = activeBookings.filter((b) => b.timeSlot === timeSlot).length;
+        const remainingBays = Math.max(0, MAX_BAYS_PER_SLOT - bookedCount);
+        return {
+          timeSlot,
+          bookedCount,
+          remainingBays,
+          available: remainingBays > 0,
+        };
+      });
+
+      res.json({
+        date: rawDate,
+        branch,
+        maxBaysPerSlot: MAX_BAYS_PER_SLOT,
+        slots,
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post("/api/bookings", async (req, res, next) => {
+    try {
+      const body = req.body as Record<string, unknown>;
+      const customerName =
+        typeof body.customerName === "string" ? body.customerName.trim().slice(0, 80) : "";
+      const rawPhone = typeof body.phone === "string" ? body.phone.trim() : "";
+      const phone = normalizePhone(rawPhone);
+      const vehicleInfo =
+        typeof body.vehicleInfo === "string" ? body.vehicleInfo.trim().slice(0, 100) : "";
+      const garageBranch =
+        typeof body.garageBranch === "string" ? body.garageBranch.trim() : "";
+      const serviceType =
+        typeof body.serviceType === "string" ? body.serviceType.trim() : "";
+      const bookingDate =
+        typeof body.bookingDate === "string" ? body.bookingDate.trim() : "";
+      const timeSlot = typeof body.timeSlot === "string" ? body.timeSlot.trim() : "";
+      const orderCode =
+        typeof body.orderCode === "string" && body.orderCode.trim()
+          ? body.orderCode.trim().toUpperCase().slice(0, 40)
+          : undefined;
+      const note =
+        typeof body.note === "string" && body.note.trim()
+          ? body.note.trim().slice(0, 260)
+          : undefined;
+
+      if (!customerName || phone.length < 9 || !vehicleInfo) {
+        res.status(400).json({
+          error: "Vui lòng nhập đầy đủ Họ tên, Số điện thoại hợp lệ và Dòng xe lắp đặt.",
+        });
+        return;
+      }
+      if (!VALID_BRANCHES.includes(garageBranch as GarageBranchId)) {
+        res.status(400).json({ error: "Cơ sở xưởng lắp đặt không hợp lệ." });
+        return;
+      }
+      if (!VALID_SERVICE_TYPES.includes(serviceType as InstallationServiceType)) {
+        res.status(400).json({ error: "Hạng mục dịch vụ lắp đặt không hợp lệ." });
+        return;
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(bookingDate)) {
+        res.status(400).json({ error: "Ngày hẹn phải đúng định dạng YYYY-MM-DD." });
+        return;
+      }
+      if (!BOOKING_TIME_SLOTS.includes(timeSlot as (typeof BOOKING_TIME_SLOTS)[number])) {
+        res.status(400).json({ error: "Khung giờ hẹn không hợp lệ." });
+        return;
+      }
+
+      const sameDayBookings = await repo.listBookings({
+        date: bookingDate,
+        branch: garageBranch as GarageBranchId,
+      });
+      const bookedInSlot = sameDayBookings.filter(
+        (b) => b.timeSlot === timeSlot && b.status !== "cancelled",
+      ).length;
+      if (bookedInSlot >= MAX_BAYS_PER_SLOT) {
+        res.status(409).json({
+          error: `Khung giờ ${timeSlot} ngày ${bookingDate} đã kín khoang lắp. Vui lòng chọn khung giờ khác.`,
+        });
+        return;
+      }
+
+      const optionalCustomer = extractOptionalCustomer(req, options.jwtSecret);
+      const now = new Date().toISOString();
+      const booking: InstallationBookingRecord = {
+        id: `bk-${crypto.randomUUID().slice(0, 8)}`,
+        bookingCode: generateBookingCode(),
+        customerId: optionalCustomer?.sub,
+        orderCode,
+        customerName,
+        phone,
+        vehicleInfo,
+        garageBranch: garageBranch as GarageBranchId,
+        serviceType: serviceType as InstallationServiceType,
+        bookingDate,
+        timeSlot,
+        note,
+        status: "pending",
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const created = await repo.createBooking(booking);
+      res.status(201).json({ item: created });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get("/api/bookings/:bookingCode", async (req, res, next) => {
+    try {
+      const booking = await repo.findBookingByCode(req.params.bookingCode);
+      if (!booking) {
+        res.status(404).json({ error: "Không tìm thấy lịch hẹn lắp đặt với mã này." });
+        return;
+      }
+      res.json({ item: booking });
     } catch (err) {
       next(err);
     }
@@ -728,8 +996,11 @@ export function createApp(options: AppOptions = {}) {
         return;
       }
       const customer = toPublicCustomer(account);
-      const orders = await repo.listOrdersByCustomer(customer.id, customer.phone);
-      res.json({ customer, orders });
+      const [orders, bookings] = await Promise.all([
+        repo.listOrdersByCustomer(customer.id, customer.phone),
+        repo.listBookingsByCustomer(customer.id, customer.phone),
+      ]);
+      res.json({ customer, orders, bookings });
     } catch (err) {
       next(err);
     }
@@ -913,14 +1184,23 @@ export function createApp(options: AppOptions = {}) {
   // --- Admin Operations & Dashboard Endpoints (Issues #2, #3, #7) ---
   app.get("/api/admin/overview", requireAdmin, async (_req, res, next) => {
     try {
-      const [products, orders, inventoryLogs, allReviews, totalCustomers] =
-        await Promise.all([
-          repo.listProducts(),
-          repo.listOrders(100),
-          repo.listInventoryLogs(15),
-          repo.listReviews({ status: "all" }),
-          repo.countCustomers(),
-        ]);
+      const [
+        products,
+        orders,
+        inventoryLogs,
+        allReviews,
+        totalCustomers,
+        allVouchers,
+        allBookings,
+      ] = await Promise.all([
+        repo.listProducts(),
+        repo.listOrders(100),
+        repo.listInventoryLogs(15),
+        repo.listReviews({ status: "all" }),
+        repo.countCustomers(),
+        repo.listVouchers(),
+        repo.listBookings({ status: "all" }),
+      ]);
 
       const totalRevenueVnd = orders.reduce((sum, o) => sum + o.totalVnd, 0);
       const pendingOrders = orders.filter((o) => o.status === "pending_confirm").length;
@@ -930,6 +1210,8 @@ export function createApp(options: AppOptions = {}) {
       ).length;
       const pendingReviews = allReviews.filter((r) => r.status === "pending").length;
       const approvedReviews = allReviews.filter((r) => r.status === "approved").length;
+      const activeVouchers = allVouchers.filter((v) => v.active).length;
+      const pendingBookings = allBookings.filter((b) => b.status === "pending").length;
 
       res.json({
         storageDriver: repo.driverName,
@@ -943,6 +1225,9 @@ export function createApp(options: AppOptions = {}) {
           pendingReviews,
           approvedReviews,
           totalCustomers,
+          activeVouchers,
+          pendingBookings,
+          totalBookings: allBookings.length,
         },
         recentNotifications: notifier.history.slice(0, 10),
         recentInventoryLogs: inventoryLogs,
@@ -1242,6 +1527,191 @@ export function createApp(options: AppOptions = {}) {
       next(err);
     }
   });
+
+  // --- Admin Vouchers CRUD (Phase 3.5) ---
+  app.get("/api/admin/vouchers", requireAdmin, async (_req, res, next) => {
+    try {
+      const items = await repo.listVouchers();
+      res.json({ items });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post("/api/admin/vouchers", requireAdmin, async (req, res, next) => {
+    try {
+      const body = req.body as Record<string, unknown>;
+      const code =
+        typeof body.code === "string"
+          ? body.code
+              .trim()
+              .toUpperCase()
+              .replace(/[^A-Z0-9_-]/g, "")
+              .slice(0, 24)
+          : "";
+      const title =
+        typeof body.title === "string" ? body.title.trim().slice(0, 100) : "";
+      const descriptionVi =
+        typeof body.descriptionVi === "string" && body.descriptionVi.trim()
+          ? body.descriptionVi.trim().slice(0, 220)
+          : title;
+      const discountType: VoucherDiscountType =
+        body.discountType === "percent" ? "percent" : "fixed";
+      const discountValue = Number(body.discountValue);
+      const minOrderVnd = Math.max(0, Math.round(Number(body.minOrderVnd ?? 0) || 0));
+      const maxDiscountRaw = Number(body.maxDiscountVnd);
+      const maxDiscountVnd =
+        Number.isFinite(maxDiscountRaw) && maxDiscountRaw > 0
+          ? Math.round(maxDiscountRaw)
+          : undefined;
+      const usageLimitRaw = Number(body.usageLimit);
+      const usageLimit =
+        Number.isInteger(usageLimitRaw) && usageLimitRaw > 0 ? usageLimitRaw : undefined;
+      const expiresAt =
+        typeof body.expiresAt === "string" && body.expiresAt.trim()
+          ? new Date(body.expiresAt).toISOString()
+          : undefined;
+
+      if (!code || code.length < 3 || !title) {
+        res.status(400).json({
+          error: "Vui lòng nhập mã voucher (tối thiểu 3 ký tự A-Z/0-9) và tiêu đề.",
+        });
+        return;
+      }
+      if (
+        discountType === "percent" &&
+        (!Number.isFinite(discountValue) || discountValue < 1 || discountValue > 90)
+      ) {
+        res.status(400).json({ error: "Mức giảm theo % phải nằm trong khoảng 1–90%." });
+        return;
+      }
+      if (
+        discountType === "fixed" &&
+        (!Number.isFinite(discountValue) || discountValue < 10_000)
+      ) {
+        res.status(400).json({ error: "Mức giảm tiền mặt tối thiểu là 10.000₫." });
+        return;
+      }
+
+      if (await repo.findVoucherByCode(code)) {
+        res.status(409).json({ error: `Mã giảm giá ${code} đã tồn tại.` });
+        return;
+      }
+
+      const created = await repo.createVoucher({
+        id: `vch-${crypto.randomUUID().slice(0, 8)}`,
+        code,
+        title,
+        descriptionVi,
+        discountType,
+        discountValue: Math.round(discountValue),
+        minOrderVnd,
+        maxDiscountVnd,
+        usageLimit,
+        usedCount: 0,
+        active: body.active !== false,
+        expiresAt,
+        createdAt: new Date().toISOString(),
+      });
+      res.status(201).json({ item: created });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.patch("/api/admin/vouchers/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const body = req.body as Record<string, unknown>;
+      const patch: Partial<VoucherRecord> = {};
+      if (typeof body.active === "boolean") patch.active = body.active;
+      if (typeof body.title === "string" && body.title.trim()) {
+        patch.title = body.title.trim().slice(0, 100);
+      }
+      if (typeof body.descriptionVi === "string" && body.descriptionVi.trim()) {
+        patch.descriptionVi = body.descriptionVi.trim().slice(0, 220);
+      }
+      if (typeof body.minOrderVnd === "number" && body.minOrderVnd >= 0) {
+        patch.minOrderVnd = Math.round(body.minOrderVnd);
+      }
+      if (typeof body.usageLimit === "number" && body.usageLimit > 0) {
+        patch.usageLimit = Math.round(body.usageLimit);
+      }
+
+      const updated = await repo.updateVoucher(readParam(req.params.id), patch);
+      if (!updated) {
+        res.status(404).json({ error: "Không tìm thấy mã giảm giá cần cập nhật." });
+        return;
+      }
+      res.json({ item: updated });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.delete("/api/admin/vouchers/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const removed = await repo.deleteVoucher(readParam(req.params.id));
+      if (!removed) {
+        res.status(404).json({ error: "Không tìm thấy mã giảm giá cần xóa." });
+        return;
+      }
+      res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // --- Admin Installation Bookings Management (Phase 3.5) ---
+  app.get("/api/admin/bookings", requireAdmin, async (req, res, next) => {
+    try {
+      const rawStatus =
+        typeof req.query.status === "string" ? req.query.status.trim() : "all";
+      const all = await repo.listBookings({ status: "all" });
+      const items =
+        VALID_BOOKING_STATUS.includes(rawStatus as BookingStatus)
+          ? all.filter((b) => b.status === rawStatus)
+          : all;
+      res.json({
+        items,
+        counts: {
+          all: all.length,
+          pending: all.filter((b) => b.status === "pending").length,
+          confirmed: all.filter((b) => b.status === "confirmed").length,
+          in_bay: all.filter((b) => b.status === "in_bay").length,
+          completed: all.filter((b) => b.status === "completed").length,
+          cancelled: all.filter((b) => b.status === "cancelled").length,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.patch(
+    "/api/admin/bookings/:bookingCode/status",
+    requireAdmin,
+    async (req, res, next) => {
+      try {
+        const body = req.body as Record<string, unknown>;
+        const nextStatus = typeof body.status === "string" ? body.status.trim() : "";
+        if (!VALID_BOOKING_STATUS.includes(nextStatus as BookingStatus)) {
+          res.status(400).json({ error: "Trạng thái lịch lắp đặt không hợp lệ." });
+          return;
+        }
+        const updated = await repo.updateBookingStatus(
+          readParam(req.params.bookingCode),
+          nextStatus as BookingStatus,
+        );
+        if (!updated) {
+          res.status(404).json({ error: "Không tìm thấy lịch hẹn lắp đặt." });
+          return;
+        }
+        res.json({ item: updated });
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   async function readAdminAiConfigSnapshot() {
     const status = await getAiEngineStatus();

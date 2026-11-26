@@ -12,26 +12,35 @@ import {
   Plus,
   QrCode,
   ShoppingBag,
+  Tag,
   Trash2,
   Truck,
   UserCheck,
+  Wrench,
   X,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { useMemo, useState } from "react";
-import { formatVnd, submitOrder } from "@/lib/api";
+import {
+  FALLBACK_VOUCHERS,
+  formatVnd,
+  submitOrder,
+  validateVoucherCode,
+} from "@/lib/api";
 import { useCustomerSession } from "@/lib/useCustomerSession";
-import type { CartItem, OrderRecord } from "@/types/autoparts";
+import type { CartItem, OrderRecord, VoucherRecord } from "@/types/autoparts";
 
 interface CartDrawerProps {
   open: boolean;
   items: CartItem[];
+  availableVouchers?: VoucherRecord[];
   onClose: () => void;
   onUpdateQty: (productId: string, selectedKelvin: string, delta: number) => void;
   onRemove: (productId: string, selectedKelvin: string) => void;
   onClearCart: () => void;
   onOrderCreated: (order: OrderRecord) => void;
   onJumpToLookup?: (orderCode: string) => void;
+  onJumpToBooking?: (orderCode: string) => void;
 }
 
 const BANK_INFO = {
@@ -78,12 +87,14 @@ function buildVietQrPayload(accountNumber: string, amountVnd: number, memo: stri
 export function CartDrawer({
   open,
   items,
+  availableVouchers = FALLBACK_VOUCHERS,
   onClose,
   onUpdateQty,
   onRemove,
   onClearCart,
   onOrderCreated,
   onJumpToLookup,
+  onJumpToBooking,
 }: CartDrawerProps) {
   const { customer, reloadSession } = useCustomerSession();
   const [draftName, setDraftName] = useState<string | null>(null);
@@ -91,6 +102,10 @@ export function CartDrawer({
   const [draftVehicle, setDraftVehicle] = useState<string | null>(null);
   const [draftAddress, setDraftAddress] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [voucherInput, setVoucherInput] = useState("");
+  const [appliedVoucher, setAppliedVoucher] = useState<VoucherRecord | null>(null);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [checkingVoucher, setCheckingVoucher] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successOrder, setSuccessOrder] = useState<OrderRecord | null>(null);
@@ -140,8 +155,42 @@ export function CartDrawer({
     0,
   );
   const shippingFee = subtotal === 0 || subtotal >= FREE_SHIP_THRESHOLD ? 0 : SHIPPING_FEE;
-  const total = subtotal + shippingFee;
+
+  // Compute live discount when applied voucher still satisfies minOrderVnd
+  const voucherEligible = Boolean(appliedVoucher && subtotal >= appliedVoucher.minOrderVnd);
+  let discountVnd = 0;
+  if (appliedVoucher && subtotal >= appliedVoucher.minOrderVnd) {
+    if (appliedVoucher.discountType === "percent") {
+      const pct = Math.round((subtotal * appliedVoucher.discountValue) / 100);
+      discountVnd = appliedVoucher.maxDiscountVnd
+        ? Math.min(pct, appliedVoucher.maxDiscountVnd)
+        : Math.min(pct, subtotal);
+    } else {
+      discountVnd = Math.min(subtotal, appliedVoucher.discountValue);
+    }
+  }
+
+  const total = Math.max(0, subtotal - discountVnd + shippingFee);
   const freeShipProgress = Math.min(100, Math.round((subtotal / FREE_SHIP_THRESHOLD) * 100));
+
+  async function handleApplyVoucher(codeToCheck?: string) {
+    const code = (codeToCheck ?? voucherInput).trim().toUpperCase();
+    if (!code) {
+      setVoucherError("Vui lòng nhập mã giảm giá.");
+      return;
+    }
+    setVoucherInput(code);
+    setVoucherError(null);
+    setCheckingVoucher(true);
+    const res = await validateVoucherCode(code, subtotal);
+    setCheckingVoucher(false);
+    if (!res.ok || !res.voucher) {
+      setAppliedVoucher(null);
+      setVoucherError(res.error ?? "Mã giảm giá chưa áp dụng được.");
+      return;
+    }
+    setAppliedVoucher(res.voucher);
+  }
 
   async function handleCheckout(e: React.FormEvent) {
     e.preventDefault();
@@ -153,6 +202,7 @@ export function CartDrawer({
       vehicleInfo: effectiveVehicleInfo,
       shippingAddress: effectiveShippingAddress,
       note: note || undefined,
+      voucherCode: voucherEligible && appliedVoucher ? appliedVoucher.code : undefined,
       items: items.map((i) => ({
         productId: i.product.id,
         quantity: i.quantity,
@@ -167,6 +217,8 @@ export function CartDrawer({
     }
 
     setSuccessOrder(result.order);
+    setAppliedVoucher(null);
+    setVoucherInput("");
     onOrderCreated(result.order);
     onClearCart();
     if (customer) {
@@ -294,12 +346,32 @@ export function CartDrawer({
               <div className="mt-4 space-y-1 border-t border-emerald-800/40 pt-3 text-xs text-zinc-200">
                 <p>Khách hàng: {successOrder.customerName}</p>
                 <p>Xe: {successOrder.vehicleInfo}</p>
+                {successOrder.voucherCode && (successOrder.discountVnd ?? 0) > 0 && (
+                  <p className="font-mono text-emerald-300">
+                    Mã {successOrder.voucherCode}: -{formatVnd(successOrder.discountVnd ?? 0)}
+                  </p>
+                )}
                 <p className="font-mono font-bold text-[#ff4d5e]">
                   Tổng thanh toán: {formatVnd(successOrder.totalVnd)}
                 </p>
               </div>
 
               <div className="mt-4 flex flex-col gap-2">
+                {onJumpToBooking && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const code = successOrder.orderCode;
+                      setSuccessOrder(null);
+                      onClose();
+                      onJumpToBooking(code);
+                    }}
+                    className="chamfer-sm inline-flex w-full cursor-pointer items-center justify-center gap-1.5 border border-emerald-500/70 bg-emerald-950/35 py-2.5 text-xs font-bold text-emerald-200 transition hover:bg-emerald-900/50"
+                  >
+                    <Wrench className="h-3.5 w-3.5" />
+                    <span>Đặt Lịch Lắp Đặt Miễn Công Kèm Đơn Này</span>
+                  </button>
+                )}
                 {onJumpToLookup && (
                   <button
                     type="button"
@@ -510,6 +582,89 @@ export function CartDrawer({
                   className="w-full border border-red-900/55 bg-[#14090e] px-3.5 py-2 text-xs text-white placeholder:text-zinc-500 focus:border-[#ff2e43] focus:outline-none"
                 />
 
+                {/* Voucher Promo Box */}
+                <div className="space-y-2 border border-amber-600/40 bg-[#12070b] p-3">
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="inline-flex items-center gap-1.5 font-mono font-bold text-amber-300 uppercase">
+                      <Tag className="h-3.5 w-3.5 text-[#ff4d5e]" />
+                      Mã Giảm Giá / Voucher
+                    </span>
+                    {appliedVoucher && voucherEligible && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAppliedVoucher(null);
+                          setVoucherInput("");
+                          setVoucherError(null);
+                        }}
+                        className="cursor-pointer font-mono text-[10px] text-zinc-400 underline hover:text-white"
+                      >
+                        Bỏ mã
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={voucherInput}
+                      onChange={(e) => setVoucherInput(e.target.value.toUpperCase())}
+                      placeholder="Nhập mã (VD: YOKOCHO10)"
+                      className="min-w-0 flex-1 border border-red-900/55 bg-[#090407] px-3 py-1.5 font-mono text-xs text-amber-200 uppercase placeholder:text-zinc-500 focus:border-amber-400 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      disabled={checkingVoucher}
+                      onClick={() => handleApplyVoucher()}
+                      className="chamfer-sm shrink-0 cursor-pointer border border-amber-500/75 bg-amber-950/45 px-3 py-1.5 font-mono text-[11px] font-bold text-amber-200 hover:bg-amber-900/60 disabled:opacity-50"
+                    >
+                      {checkingVoucher ? "..." : "Áp Mã"}
+                    </button>
+                  </div>
+
+                  {availableVouchers.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {availableVouchers.slice(0, 3).map((v) => {
+                        const isSelected = appliedVoucher?.code === v.code && voucherEligible;
+                        return (
+                          <button
+                            key={v.code}
+                            type="button"
+                            onClick={() => handleApplyVoucher(v.code)}
+                            title={v.descriptionVi}
+                            className={`cursor-pointer border px-2 py-0.5 font-mono text-[10px] transition ${
+                              isSelected
+                                ? "border-emerald-400 bg-emerald-950/70 font-bold text-emerald-200"
+                                : "border-red-900/60 bg-black/50 text-zinc-300 hover:border-amber-400 hover:text-amber-200"
+                            }`}
+                          >
+                            {v.code} ·{" "}
+                            {v.discountType === "percent"
+                              ? `-${v.discountValue}%`
+                              : `-${Math.round(v.discountValue / 1000)}K`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {appliedVoucher && voucherEligible && (
+                    <p className="font-mono text-[11px] text-emerald-300">
+                      ✓ Đã áp mã <strong>{appliedVoucher.code}</strong>: giảm{" "}
+                      <strong>{formatVnd(discountVnd)}</strong>
+                    </p>
+                  )}
+                  {appliedVoucher && !voucherEligible && (
+                    <p className="text-[11px] text-amber-300">
+                      Cần thêm {formatVnd(appliedVoucher.minOrderVnd - subtotal)} để đủ điều kiện mã{" "}
+                      {appliedVoucher.code}.
+                    </p>
+                  )}
+                  {voucherError && (
+                    <p className="text-[11px] text-red-300">{voucherError}</p>
+                  )}
+                </div>
+
                 {error && (
                   <p className="border border-red-700/70 bg-red-950/70 px-3 py-2 text-xs text-red-200">
                     {error}
@@ -521,6 +676,12 @@ export function CartDrawer({
                     <span>Tạm tính</span>
                     <span className="font-mono">{formatVnd(subtotal)}</span>
                   </div>
+                  {discountVnd > 0 && appliedVoucher && (
+                    <div className="flex justify-between text-emerald-300">
+                      <span>Giảm giá ({appliedVoucher.code})</span>
+                      <span className="font-mono font-bold">-{formatVnd(discountVnd)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-zinc-300">
                     <span>Phí vận chuyển</span>
                     <span className="font-mono">

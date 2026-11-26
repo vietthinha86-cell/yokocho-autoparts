@@ -105,19 +105,30 @@ async function main(): Promise<void> {
   const prisma = new PrismaClient();
   try {
     await seedDatabase(prisma);
-    const [products, fitments, combos, reviews, customers, orders, admins] =
-      await Promise.all([
-        prisma.product.count(),
-        prisma.vehicleFitment.count(),
-        prisma.vehicleBuildCombo.count(),
-        prisma.productReview.count(),
-        prisma.customerUser.count(),
-        prisma.order.count(),
-        prisma.adminUser.count(),
-      ]);
+    const [
+      products,
+      fitments,
+      combos,
+      reviews,
+      customers,
+      orders,
+      admins,
+      vouchers,
+      bookings,
+    ] = await Promise.all([
+      prisma.product.count(),
+      prisma.vehicleFitment.count(),
+      prisma.vehicleBuildCombo.count(),
+      prisma.productReview.count(),
+      prisma.customerUser.count(),
+      prisma.order.count(),
+      prisma.adminUser.count(),
+      prisma.voucher.count(),
+      prisma.installationBooking.count(),
+    ]);
 
     console.log(
-      `==> PostgreSQL READY: products=${products}, fitments=${fitments}, combos=${combos}, reviews=${reviews}, customers=${customers}, orders=${orders}, admins=${admins}`,
+      `==> PostgreSQL READY: products=${products}, fitments=${fitments}, combos=${combos}, reviews=${reviews}, customers=${customers}, orders=${orders}, admins=${admins}, vouchers=${vouchers}, bookings=${bookings}`,
     );
   } finally {
     await prisma.$disconnect();

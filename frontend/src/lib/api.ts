@@ -3,12 +3,17 @@ import type {
   AiEngineStatus,
   AutoPartProduct,
   BeamModeChoice,
+  BookingSlotAvailability,
   DrivingProfile,
+  GarageBranchId,
+  InstallationBookingRecord,
+  InstallationServiceType,
   OrderRecord,
   ProductReviewRecord,
   ReviewsFeedResponse,
   VehicleBuildCombo,
   VehicleFitment,
+  VoucherRecord,
 } from "@/types/autoparts";
 import { buildOfflineAiFallback } from "./smartSearch";
 
@@ -516,6 +521,7 @@ export async function submitOrder(payload: {
   vehicleInfo: string;
   shippingAddress: string;
   note?: string;
+  voucherCode?: string;
   items: Array<{ productId: string; quantity: number; selectedKelvin?: string }>;
 }): Promise<{ ok: boolean; order?: OrderRecord; error?: string }> {
   try {
@@ -677,6 +683,177 @@ export async function submitCustomerReview(payload: {
     return {
       ok: false,
       error: "Không kết nối được Backend API (localhost:4000) để lưu đánh giá.",
+    };
+  }
+}
+
+export const FALLBACK_VOUCHERS: VoucherRecord[] = [
+  {
+    id: "vch-yokocho10",
+    code: "YOKOCHO10",
+    title: "Ưu đãi đêm 10% (Tối đa 600K)",
+    descriptionVi: "Giảm 10% cho mọi đơn phụ tùng & đèn tăng sáng từ 2.000.000₫, tối đa 600.000₫.",
+    discountType: "percent",
+    discountValue: 10,
+    minOrderVnd: 2_000_000,
+    maxDiscountVnd: 600_000,
+    usageLimit: 100,
+    usedCount: 7,
+    active: true,
+    createdAt: "2026-11-12T08:00:00.000Z",
+  },
+  {
+    id: "vch-demdo300k",
+    code: "DEMDO300K",
+    title: "Trừ thẳng 300.000₫ đèn Bi-LED / Bi-Gầm",
+    descriptionVi: "Áp dụng cho đơn từ 3.400.000₫ trở lên — cộng dồn với Freeship toàn quốc.",
+    discountType: "fixed",
+    discountValue: 300_000,
+    minOrderVnd: 3_400_000,
+    usageLimit: 60,
+    usedCount: 4,
+    active: true,
+    createdAt: "2026-11-12T08:05:00.000Z",
+  },
+  {
+    id: "vch-freelap500",
+    code: "FREELAP500",
+    title: "Combo Full Đêm — Giảm 500.000₫",
+    descriptionVi: "Dành cho đơn nâng cấp combo từ 6.500.000₫ trở lên kèm hỗ trợ công lắp xưởng.",
+    discountType: "fixed",
+    discountValue: 500_000,
+    minOrderVnd: 6_500_000,
+    usageLimit: 40,
+    usedCount: 2,
+    active: true,
+    createdAt: "2026-11-12T08:10:00.000Z",
+  },
+];
+
+export async function fetchPublicVouchers(): Promise<VoucherRecord[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/vouchers/public`, { cache: "no-store" });
+    if (!res.ok) return FALLBACK_VOUCHERS;
+    const data = (await res.json()) as { items?: VoucherRecord[] };
+    return Array.isArray(data.items) ? data.items : FALLBACK_VOUCHERS;
+  } catch {
+    return FALLBACK_VOUCHERS;
+  }
+}
+
+export async function validateVoucherCode(
+  code: string,
+  subtotalVnd: number,
+): Promise<{
+  ok: boolean;
+  voucher?: VoucherRecord;
+  discountVnd?: number;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/vouchers/validate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: code.trim().toUpperCase(), subtotalVnd }),
+    });
+    const data = (await res.json()) as {
+      valid?: boolean;
+      voucher?: VoucherRecord;
+      discountVnd?: number;
+      error?: string;
+    };
+    if (!res.ok || !data.valid || !data.voucher) {
+      return { ok: false, error: data.error ?? "Mã giảm giá không hợp lệ." };
+    }
+    return { ok: true, voucher: data.voucher, discountVnd: data.discountVnd ?? 0 };
+  } catch {
+    return {
+      ok: false,
+      error: "Không kết nối được máy chủ để kiểm tra mã giảm giá.",
+    };
+  }
+}
+
+export async function fetchBookingSlots(
+  date: string,
+  branch: GarageBranchId,
+): Promise<{
+  ok: boolean;
+  slots: BookingSlotAvailability[];
+  maxBaysPerSlot: number;
+}> {
+  const defaultSlots: BookingSlotAvailability[] = [
+    "09:00",
+    "11:00",
+    "14:00",
+    "16:30",
+    "19:00",
+  ].map((timeSlot) => ({
+    timeSlot,
+    bookedCount: 0,
+    remainingBays: 2,
+    available: true,
+  }));
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/bookings/slots?date=${encodeURIComponent(date)}&branch=${encodeURIComponent(branch)}`,
+      { cache: "no-store" },
+    );
+    if (!res.ok) return { ok: false, slots: defaultSlots, maxBaysPerSlot: 2 };
+    const data = (await res.json()) as {
+      slots?: BookingSlotAvailability[];
+      maxBaysPerSlot?: number;
+    };
+    return {
+      ok: true,
+      slots: Array.isArray(data.slots) ? data.slots : defaultSlots,
+      maxBaysPerSlot: data.maxBaysPerSlot ?? 2,
+    };
+  } catch {
+    return { ok: false, slots: defaultSlots, maxBaysPerSlot: 2 };
+  }
+}
+
+export async function submitInstallationBooking(payload: {
+  customerName: string;
+  phone: string;
+  vehicleInfo: string;
+  garageBranch: GarageBranchId;
+  serviceType: InstallationServiceType;
+  bookingDate: string;
+  timeSlot: string;
+  orderCode?: string;
+  note?: string;
+}): Promise<{ ok: boolean; item?: InstallationBookingRecord; error?: string }> {
+  try {
+    let token: string | null = null;
+    if (typeof window !== "undefined") {
+      try {
+        token = window.localStorage.getItem("akari_customer_token_v1");
+      } catch {
+        token = null;
+      }
+    }
+    const res = await fetch(`${API_BASE_URL}/api/bookings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = (await res.json()) as {
+      item?: InstallationBookingRecord;
+      error?: string;
+    };
+    if (!res.ok || !data.item) {
+      return { ok: false, error: data.error ?? "Không thể đặt lịch lắp đặt." };
+    }
+    return { ok: true, item: data.item };
+  } catch {
+    return {
+      ok: false,
+      error: "Không kết nối được Backend API (localhost:4000) để giữ khoang lắp đặt.",
     };
   }
 }

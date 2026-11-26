@@ -4,8 +4,12 @@ import type {
   AdminUserRecord,
   AutoPartProduct,
   BeamModeChoice,
+  BookingStatus,
   CustomerGarageVehicle,
   CustomerProfileRecord,
+  GarageBranchId,
+  InstallationBookingRecord,
+  InstallationServiceType,
   InventoryLogRecord,
   OrderRecord,
   PartCategory,
@@ -15,6 +19,8 @@ import type {
   TechnicalSpec,
   VehicleBuildCombo,
   VehicleFitment,
+  VoucherDiscountType,
+  VoucherRecord,
 } from "../types.ts";
 import {
   toPublicCustomer,
@@ -27,6 +33,46 @@ type PrismaProductRow = Awaited<ReturnType<PrismaClient["product"]["findMany"]>>
 type PrismaOrderWithItems = Prisma.OrderGetPayload<{ include: { items: true } }>;
 type PrismaReviewRow = Awaited<ReturnType<PrismaClient["productReview"]["findMany"]>>[number];
 type PrismaCustomerRow = Awaited<ReturnType<PrismaClient["customerUser"]["findMany"]>>[number];
+type PrismaVoucherRow = Awaited<ReturnType<PrismaClient["voucher"]["findMany"]>>[number];
+type PrismaBookingRow = Awaited<ReturnType<PrismaClient["installationBooking"]["findMany"]>>[number];
+
+function mapVoucher(row: PrismaVoucherRow): VoucherRecord {
+  return {
+    id: row.id,
+    code: row.code,
+    title: row.title,
+    descriptionVi: row.descriptionVi,
+    discountType: row.discountType as VoucherDiscountType,
+    discountValue: row.discountValue,
+    minOrderVnd: row.minOrderVnd,
+    maxDiscountVnd: row.maxDiscountVnd ?? undefined,
+    usageLimit: row.usageLimit ?? undefined,
+    usedCount: row.usedCount,
+    active: row.active,
+    expiresAt: row.expiresAt ? row.expiresAt.toISOString() : undefined,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+function mapBooking(row: PrismaBookingRow): InstallationBookingRecord {
+  return {
+    id: row.id,
+    bookingCode: row.bookingCode,
+    customerId: row.customerId ?? undefined,
+    orderCode: row.orderCode ?? undefined,
+    customerName: row.customerName,
+    phone: row.phone,
+    vehicleInfo: row.vehicleInfo,
+    garageBranch: row.garageBranch as GarageBranchId,
+    serviceType: row.serviceType as InstallationServiceType,
+    bookingDate: row.bookingDate,
+    timeSlot: row.timeSlot,
+    note: row.note ?? undefined,
+    status: row.status as BookingStatus,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
 
 function mapCustomer(row: PrismaCustomerRow): StoredCustomerAccount {
   const vehicles = Array.isArray(row.garageVehiclesJson)
@@ -100,6 +146,8 @@ function mapOrder(row: PrismaOrderWithItems): OrderRecord {
     shippingAddress: row.shippingAddress,
     note: row.note ?? undefined,
     subtotalVnd: row.subtotalVnd,
+    discountVnd: row.discountVnd ?? 0,
+    voucherCode: row.voucherCode ?? undefined,
     shippingFeeVnd: row.shippingFeeVnd,
     totalVnd: row.totalVnd,
     paymentStatus: (row.paymentStatus as "unpaid" | "paid") ?? "unpaid",
@@ -329,6 +377,8 @@ export class PrismaRepository implements GarageRepository {
         shippingAddress: order.shippingAddress,
         note: order.note ?? null,
         subtotalVnd: order.subtotalVnd,
+        discountVnd: order.discountVnd ?? 0,
+        voucherCode: order.voucherCode ?? null,
         shippingFeeVnd: order.shippingFeeVnd,
         totalVnd: order.totalVnd,
         paymentStatus: order.paymentStatus ?? "unpaid",
@@ -572,6 +622,194 @@ export class PrismaRepository implements GarageRepository {
       },
     });
     return toPublicCustomer(mapCustomer(row));
+  }
+
+  async listVouchers(options?: { activeOnly?: boolean }): Promise<VoucherRecord[]> {
+    const rows = await this.prisma.voucher.findMany({
+      where: options?.activeOnly ? { active: true } : undefined,
+      orderBy: { createdAt: "desc" },
+    });
+    const mapped = rows.map(mapVoucher);
+    if (!options?.activeOnly) return mapped;
+    const now = Date.now();
+    return mapped.filter((v) => {
+      if (v.expiresAt && new Date(v.expiresAt).getTime() < now) return false;
+      if (typeof v.usageLimit === "number" && v.usedCount >= v.usageLimit) return false;
+      return true;
+    });
+  }
+
+  async findVoucherByCode(code: string): Promise<VoucherRecord | null> {
+    const row = await this.prisma.voucher.findFirst({
+      where: { code: { equals: code.trim(), mode: "insensitive" } },
+    });
+    return row ? mapVoucher(row) : null;
+  }
+
+  async createVoucher(voucher: VoucherRecord): Promise<VoucherRecord> {
+    const row = await this.prisma.voucher.create({
+      data: {
+        id: voucher.id,
+        code: voucher.code.toUpperCase(),
+        title: voucher.title,
+        descriptionVi: voucher.descriptionVi,
+        discountType: voucher.discountType,
+        discountValue: voucher.discountValue,
+        minOrderVnd: voucher.minOrderVnd,
+        maxDiscountVnd: voucher.maxDiscountVnd ?? null,
+        usageLimit: voucher.usageLimit ?? null,
+        usedCount: voucher.usedCount,
+        active: voucher.active,
+        expiresAt: voucher.expiresAt ? new Date(voucher.expiresAt) : null,
+      },
+    });
+    return mapVoucher(row);
+  }
+
+  async updateVoucher(
+    id: string,
+    patch: Partial<
+      Pick<
+        VoucherRecord,
+        | "title"
+        | "descriptionVi"
+        | "discountType"
+        | "discountValue"
+        | "minOrderVnd"
+        | "maxDiscountVnd"
+        | "usageLimit"
+        | "active"
+        | "expiresAt"
+      >
+    >,
+  ): Promise<VoucherRecord | null> {
+    const existing = await this.prisma.voucher.findFirst({
+      where: { OR: [{ id }, { code: { equals: id, mode: "insensitive" } }] },
+    });
+    if (!existing) return null;
+    const row = await this.prisma.voucher.update({
+      where: { id: existing.id },
+      data: {
+        title: patch.title ?? existing.title,
+        descriptionVi: patch.descriptionVi ?? existing.descriptionVi,
+        discountType: patch.discountType ?? existing.discountType,
+        discountValue: patch.discountValue ?? existing.discountValue,
+        minOrderVnd: patch.minOrderVnd ?? existing.minOrderVnd,
+        maxDiscountVnd:
+          patch.maxDiscountVnd !== undefined
+            ? patch.maxDiscountVnd
+            : existing.maxDiscountVnd,
+        usageLimit:
+          patch.usageLimit !== undefined ? patch.usageLimit : existing.usageLimit,
+        active: patch.active ?? existing.active,
+        expiresAt:
+          patch.expiresAt !== undefined
+            ? patch.expiresAt
+              ? new Date(patch.expiresAt)
+              : null
+            : existing.expiresAt,
+      },
+    });
+    return mapVoucher(row);
+  }
+
+  async incrementVoucherUsage(code: string): Promise<void> {
+    const existing = await this.prisma.voucher.findFirst({
+      where: { code: { equals: code.trim(), mode: "insensitive" } },
+    });
+    if (!existing) return;
+    await this.prisma.voucher.update({
+      where: { id: existing.id },
+      data: { usedCount: { increment: 1 } },
+    });
+  }
+
+  async deleteVoucher(id: string): Promise<boolean> {
+    const existing = await this.prisma.voucher.findFirst({
+      where: { OR: [{ id }, { code: { equals: id, mode: "insensitive" } }] },
+    });
+    if (!existing) return false;
+    await this.prisma.voucher.delete({ where: { id: existing.id } });
+    return true;
+  }
+
+  async listBookings(
+    filter: {
+      date?: string;
+      branch?: GarageBranchId;
+      status?: BookingStatus | "all";
+    } = {},
+  ): Promise<InstallationBookingRecord[]> {
+    const where: Prisma.InstallationBookingWhereInput = {};
+    if (filter.date) where.bookingDate = filter.date;
+    if (filter.branch) where.garageBranch = filter.branch;
+    if (filter.status && filter.status !== "all") where.status = filter.status;
+    const rows = await this.prisma.installationBooking.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: 150,
+    });
+    return rows.map(mapBooking);
+  }
+
+  async listBookingsByCustomer(
+    customerId: string,
+    phone?: string,
+  ): Promise<InstallationBookingRecord[]> {
+    const normalizedPhone = phone ? normalizePhone(phone) : "";
+    const orClauses: Prisma.InstallationBookingWhereInput[] = [{ customerId }];
+    if (normalizedPhone) {
+      orClauses.push({ phone: normalizedPhone });
+    }
+    const rows = await this.prisma.installationBooking.findMany({
+      where: { OR: orClauses },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+    return rows.map(mapBooking);
+  }
+
+  async findBookingByCode(bookingCode: string): Promise<InstallationBookingRecord | null> {
+    const row = await this.prisma.installationBooking.findFirst({
+      where: { bookingCode: { equals: bookingCode.trim(), mode: "insensitive" } },
+    });
+    return row ? mapBooking(row) : null;
+  }
+
+  async createBooking(
+    booking: InstallationBookingRecord,
+  ): Promise<InstallationBookingRecord> {
+    const row = await this.prisma.installationBooking.create({
+      data: {
+        id: booking.id,
+        bookingCode: booking.bookingCode,
+        customerId: booking.customerId ?? null,
+        orderCode: booking.orderCode ?? null,
+        customerName: booking.customerName,
+        phone: booking.phone,
+        vehicleInfo: booking.vehicleInfo,
+        garageBranch: booking.garageBranch,
+        serviceType: booking.serviceType,
+        bookingDate: booking.bookingDate,
+        timeSlot: booking.timeSlot,
+        note: booking.note ?? null,
+        status: booking.status,
+      },
+    });
+    return mapBooking(row);
+  }
+
+  async updateBookingStatus(
+    bookingCode: string,
+    status: BookingStatus,
+  ): Promise<InstallationBookingRecord | null> {
+    const existing = await this.findBookingByCode(bookingCode);
+    if (!existing) return null;
+    const row = await this.prisma.installationBooking.update({
+      where: { bookingCode: existing.bookingCode },
+      data: { status },
+    });
+    return mapBooking(row);
   }
 
   async close(): Promise<void> {

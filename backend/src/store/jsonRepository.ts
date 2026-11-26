@@ -7,21 +7,27 @@ import {
   AUTO_PARTS_CATALOG,
   DEFAULT_DEMO_CUSTOMER_SEED,
   DEFAULT_DEMO_ORDERS,
+  DEFAULT_INSTALLATION_BOOKINGS,
   DEFAULT_PRODUCT_REVIEWS,
+  DEFAULT_VOUCHERS,
   VEHICLE_COMBOS,
   VEHICLE_FITMENTS,
 } from "../data/catalog.ts";
 import type {
   AdminUserRecord,
   AutoPartProduct,
+  BookingStatus,
   CustomerGarageVehicle,
   CustomerProfileRecord,
+  GarageBranchId,
+  InstallationBookingRecord,
   InventoryLogRecord,
   OrderRecord,
   ProductReviewRecord,
   ReviewStatus,
   VehicleBuildCombo,
   VehicleFitment,
+  VoucherRecord,
 } from "../types.ts";
 import {
   toPublicCustomer,
@@ -39,6 +45,8 @@ interface JsonStoreState {
   customers: StoredCustomerAccount[];
   inventoryLogs: InventoryLogRecord[];
   reviews: ProductReviewRecord[];
+  vouchers: VoucherRecord[];
+  bookings: InstallationBookingRecord[];
 }
 
 export class JsonRepository implements GarageRepository {
@@ -92,6 +100,8 @@ export class JsonRepository implements GarageRepository {
       customers: [this.createDefaultDemoCustomer()],
       inventoryLogs: [],
       reviews: DEFAULT_PRODUCT_REVIEWS.map((r) => ({ ...r })),
+      vouchers: DEFAULT_VOUCHERS.map((v) => ({ ...v })),
+      bookings: DEFAULT_INSTALLATION_BOOKINGS.map((b) => ({ ...b })),
     };
 
     if (!fs.existsSync(this.filePath)) {
@@ -133,6 +143,8 @@ export class JsonRepository implements GarageRepository {
               : baseState.customers,
           inventoryLogs: Array.isArray(obj.inventoryLogs) ? obj.inventoryLogs : [],
           reviews: Array.isArray(obj.reviews) ? obj.reviews : baseState.reviews,
+          vouchers: Array.isArray(obj.vouchers) ? obj.vouchers : baseState.vouchers,
+          bookings: Array.isArray(obj.bookings) ? obj.bookings : baseState.bookings,
         };
       }
       return baseState;
@@ -456,6 +468,144 @@ export class JsonRepository implements GarageRepository {
     this.state.customers[idx] = updated;
     this.save();
     return toPublicCustomer(updated);
+  }
+
+  async listVouchers(options?: { activeOnly?: boolean }): Promise<VoucherRecord[]> {
+    const now = Date.now();
+    return this.state.vouchers
+      .filter((v) => {
+        if (!options?.activeOnly) return true;
+        if (!v.active) return false;
+        if (v.expiresAt && new Date(v.expiresAt).getTime() < now) return false;
+        if (typeof v.usageLimit === "number" && v.usedCount >= v.usageLimit) return false;
+        return true;
+      })
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+
+  async findVoucherByCode(code: string): Promise<VoucherRecord | null> {
+    const normalized = code.trim().toUpperCase();
+    return this.state.vouchers.find((v) => v.code.toUpperCase() === normalized) ?? null;
+  }
+
+  async createVoucher(voucher: VoucherRecord): Promise<VoucherRecord> {
+    this.state.vouchers.unshift(voucher);
+    this.save();
+    return voucher;
+  }
+
+  async updateVoucher(
+    id: string,
+    patch: Partial<
+      Pick<
+        VoucherRecord,
+        | "title"
+        | "descriptionVi"
+        | "discountType"
+        | "discountValue"
+        | "minOrderVnd"
+        | "maxDiscountVnd"
+        | "usageLimit"
+        | "active"
+        | "expiresAt"
+      >
+    >,
+  ): Promise<VoucherRecord | null> {
+    const idx = this.state.vouchers.findIndex((v) => v.id === id || v.code === id);
+    if (idx === -1) return null;
+    const updated: VoucherRecord = {
+      ...this.state.vouchers[idx],
+      ...patch,
+    };
+    this.state.vouchers[idx] = updated;
+    this.save();
+    return updated;
+  }
+
+  async incrementVoucherUsage(code: string): Promise<void> {
+    const normalized = code.trim().toUpperCase();
+    const idx = this.state.vouchers.findIndex((v) => v.code.toUpperCase() === normalized);
+    if (idx === -1) return;
+    this.state.vouchers[idx] = {
+      ...this.state.vouchers[idx],
+      usedCount: this.state.vouchers[idx].usedCount + 1,
+    };
+    this.save();
+  }
+
+  async deleteVoucher(id: string): Promise<boolean> {
+    const before = this.state.vouchers.length;
+    this.state.vouchers = this.state.vouchers.filter((v) => v.id !== id && v.code !== id);
+    const removed = this.state.vouchers.length < before;
+    if (removed) this.save();
+    return removed;
+  }
+
+  async listBookings(
+    filter: {
+      date?: string;
+      branch?: GarageBranchId;
+      status?: BookingStatus | "all";
+    } = {},
+  ): Promise<InstallationBookingRecord[]> {
+    return this.state.bookings
+      .filter((b) => {
+        if (filter.date && b.bookingDate !== filter.date) return false;
+        if (filter.branch && b.garageBranch !== filter.branch) return false;
+        if (filter.status && filter.status !== "all" && b.status !== filter.status) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+
+  async listBookingsByCustomer(
+    customerId: string,
+    phone?: string,
+  ): Promise<InstallationBookingRecord[]> {
+    const normalizedPhone = phone ? normalizePhone(phone) : "";
+    return this.state.bookings
+      .filter((b) => {
+        if (b.customerId && b.customerId === customerId) return true;
+        if (normalizedPhone && normalizePhone(b.phone) === normalizedPhone) return true;
+        return false;
+      })
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+
+  async findBookingByCode(bookingCode: string): Promise<InstallationBookingRecord | null> {
+    const normalized = bookingCode.trim().toUpperCase();
+    return (
+      this.state.bookings.find((b) => b.bookingCode.toUpperCase() === normalized) ?? null
+    );
+  }
+
+  async createBooking(
+    booking: InstallationBookingRecord,
+  ): Promise<InstallationBookingRecord> {
+    this.state.bookings.unshift(booking);
+    this.save();
+    return booking;
+  }
+
+  async updateBookingStatus(
+    bookingCode: string,
+    status: BookingStatus,
+  ): Promise<InstallationBookingRecord | null> {
+    const normalized = bookingCode.trim().toUpperCase();
+    const idx = this.state.bookings.findIndex(
+      (b) => b.bookingCode.toUpperCase() === normalized,
+    );
+    if (idx === -1) return null;
+    const updated: InstallationBookingRecord = {
+      ...this.state.bookings[idx],
+      status,
+      updatedAt: new Date().toISOString(),
+    };
+    this.state.bookings[idx] = updated;
+    this.save();
+    return updated;
   }
 }
 

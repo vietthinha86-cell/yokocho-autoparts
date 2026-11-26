@@ -1,14 +1,18 @@
 import type {
   AdminUserRecord,
   AutoPartProduct,
+  BookingStatus,
   CustomerGarageVehicle,
   CustomerProfileRecord,
+  GarageBranchId,
+  InstallationBookingRecord,
   InventoryLogRecord,
   OrderRecord,
   ProductReviewRecord,
   ReviewStatus,
   VehicleBuildCombo,
   VehicleFitment,
+  VoucherRecord,
 } from "../types.ts";
 
 export interface StoredAdminAccount extends AdminUserRecord {
@@ -82,6 +86,43 @@ export interface GarageRepository {
     adminNote?: string,
   ): Promise<ProductReviewRecord | null>;
   deleteReview(id: string): Promise<boolean>;
+  listVouchers(options?: { activeOnly?: boolean }): Promise<VoucherRecord[]>;
+  findVoucherByCode(code: string): Promise<VoucherRecord | null>;
+  createVoucher(voucher: VoucherRecord): Promise<VoucherRecord>;
+  updateVoucher(
+    id: string,
+    patch: Partial<
+      Pick<
+        VoucherRecord,
+        | "title"
+        | "descriptionVi"
+        | "discountType"
+        | "discountValue"
+        | "minOrderVnd"
+        | "maxDiscountVnd"
+        | "usageLimit"
+        | "active"
+        | "expiresAt"
+      >
+    >,
+  ): Promise<VoucherRecord | null>;
+  incrementVoucherUsage(code: string): Promise<void>;
+  deleteVoucher(id: string): Promise<boolean>;
+  listBookings(filter?: {
+    date?: string;
+    branch?: GarageBranchId;
+    status?: BookingStatus | "all";
+  }): Promise<InstallationBookingRecord[]>;
+  listBookingsByCustomer(
+    customerId: string,
+    phone?: string,
+  ): Promise<InstallationBookingRecord[]>;
+  findBookingByCode(bookingCode: string): Promise<InstallationBookingRecord | null>;
+  createBooking(booking: InstallationBookingRecord): Promise<InstallationBookingRecord>;
+  updateBookingStatus(
+    bookingCode: string,
+    status: BookingStatus,
+  ): Promise<InstallationBookingRecord | null>;
   close?(): Promise<void>;
 }
 

@@ -7,12 +7,17 @@ import {
   fetchCustomerSession,
   getStoredCustomerToken,
 } from "@/lib/customerApi";
-import type { CustomerProfile, OrderRecord } from "@/types/autoparts";
+import type {
+  CustomerProfile,
+  InstallationBookingRecord,
+  OrderRecord,
+} from "@/types/autoparts";
 
 interface SessionCacheState {
   token: string | null;
   customer: CustomerProfile | null;
   orders: OrderRecord[];
+  bookings: InstallationBookingRecord[];
   loaded: boolean;
 }
 
@@ -41,6 +46,7 @@ export function useCustomerSession() {
     token: null,
     customer: null,
     orders: [],
+    bookings: [],
     loaded: false,
   });
 
@@ -57,7 +63,7 @@ export function useCustomerSession() {
       if (cancelled) return;
       if (res.unauthorized) {
         clearStoredCustomerToken();
-        setState({ token: null, customer: null, orders: [], loaded: true });
+        setState({ token: null, customer: null, orders: [], bookings: [], loaded: true });
         return;
       }
       if (res.ok && res.customer) {
@@ -65,6 +71,7 @@ export function useCustomerSession() {
           token,
           customer: res.customer,
           orders: res.orders ?? [],
+          bookings: res.bookings ?? [],
           loaded: true,
         });
       } else {
@@ -72,6 +79,7 @@ export function useCustomerSession() {
           token,
           customer: prev.token === token ? prev.customer : null,
           orders: prev.token === token ? prev.orders : [],
+          bookings: prev.token === token ? prev.bookings : [],
           loaded: true,
         }));
       }
@@ -92,12 +100,14 @@ export function useCustomerSession() {
   const isMatchingToken = Boolean(token && state.token === token);
   const customer = isMatchingToken ? state.customer : null;
   const orders = isMatchingToken ? state.orders : [];
+  const bookings = isMatchingToken ? state.bookings : [];
   const loading = Boolean(token) && (!isMatchingToken || !state.loaded);
 
   return {
     token,
     customer,
     orders,
+    bookings,
     loading,
     reloadSession,
     logout,

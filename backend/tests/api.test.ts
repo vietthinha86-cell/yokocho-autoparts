@@ -653,4 +653,194 @@ describe("Akari Yokocho AutoParts API", () => {
     assert.ok(meData.orders.some((o) => o.orderCode === guestOrder.item.orderCode));
     assert.ok(meData.orders.some((o) => o.orderCode === authOrder.item.orderCode));
   });
+
+  it("validates vouchers, applies server-side discount on checkout, and supports admin voucher CRUD", async () => {
+    const pubRes = await fetch(`${baseUrl}/api/vouchers/public`);
+    assert.equal(pubRes.status, 200);
+    const pubData = (await pubRes.json()) as { items: Array<{ code: string }> };
+    assert.ok(pubData.items.some((v) => v.code === "YOKOCHO10"));
+
+    // Reject below minimum order value
+    const tooLowRes = await fetch(`${baseUrl}/api/vouchers/validate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: "YOKOCHO10", subtotalVnd: 1_000_000 }),
+    });
+    assert.equal(tooLowRes.status, 400);
+
+    // Valid percentage voucher capped at 600K
+    const valRes = await fetch(`${baseUrl}/api/vouchers/validate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: "yokocho10", subtotalVnd: 8_900_000 }),
+    });
+    assert.equal(valRes.status, 200);
+    const valData = (await valRes.json()) as { valid: boolean; discountVnd: number };
+    assert.equal(valData.valid, true);
+    assert.equal(valData.discountVnd, 600_000);
+
+    // Checkout order using YOKOCHO10 on 5,850,000 => 585,000 discount + free ship => 5,265,000
+    const orderRes = await fetch(`${baseUrl}/api/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName: "Nguyễn Khôi",
+        phone: "0908123456",
+        vehicleInfo: "Honda Civic 2024",
+        shippingAddress: "Quận 1, TP.HCM",
+        voucherCode: "YOKOCHO10",
+        items: [{ productId: "akari-biled-yami-v9", quantity: 1 }],
+      }),
+    });
+    assert.equal(orderRes.status, 201);
+    const orderData = (await orderRes.json()) as {
+      item: { subtotalVnd: number; discountVnd: number; voucherCode: string; totalVnd: number };
+    };
+    assert.equal(orderData.item.voucherCode, "YOKOCHO10");
+    assert.equal(orderData.item.discountVnd, 585_000);
+    assert.equal(orderData.item.totalVnd, 5_265_000);
+
+    // Admin creates, toggles, and deletes a custom voucher
+    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: process.env.ADMIN_USERNAME || "admin",
+        password: process.env.ADMIN_PASSWORD || "yokocho2026",
+      }),
+    });
+    const { token } = (await loginRes.json()) as { token: string };
+    const authHeaders = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+
+    const createVchRes = await fetch(`${baseUrl}/api/admin/vouchers`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({
+        code: "NIGHTTEST200",
+        title: "Voucher Test 200K",
+        discountType: "fixed",
+        discountValue: 200_000,
+        minOrderVnd: 1_500_000,
+        usageLimit: 10,
+      }),
+    });
+    assert.equal(createVchRes.status, 201);
+    const createdVch = (await createVchRes.json()) as { item: { id: string; code: string } };
+    assert.equal(createdVch.item.code, "NIGHTTEST200");
+
+    const pauseRes = await fetch(`${baseUrl}/api/admin/vouchers/${createdVch.item.id}`, {
+      method: "PATCH",
+      headers: authHeaders,
+      body: JSON.stringify({ active: false }),
+    });
+    assert.equal(pauseRes.status, 200);
+
+    const pausedValidate = await fetch(`${baseUrl}/api/vouchers/validate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: "NIGHTTEST200", subtotalVnd: 3_000_000 }),
+    });
+    assert.equal(pausedValidate.status, 400);
+
+    const delVchRes = await fetch(`${baseUrl}/api/admin/vouchers/${createdVch.item.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    assert.equal(delVchRes.status, 200);
+  });
+
+  it("manages garage installation booking slots, prevents overbooking, and updates booking status", async () => {
+    const testDate = "2026-12-15";
+    const slotsBeforeRes = await fetch(
+      `${baseUrl}/api/bookings/slots?date=${testDate}&branch=hcm_q7`,
+    );
+    assert.equal(slotsBeforeRes.status, 200);
+    const slotsBefore = (await slotsBeforeRes.json()) as {
+      slots: Array<{ timeSlot: string; remainingBays: number; available: boolean }>;
+    };
+    const slot19 = slotsBefore.slots.find((s) => s.timeSlot === "19:00");
+    assert.equal(slot19?.remainingBays, 2);
+
+    // Book 2 bays at 19:00 (max capacity = 2)
+    const bk1Res = await fetch(`${baseUrl}/api/bookings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName: "Trần Nam",
+        phone: "0909888777",
+        vehicleInfo: "Honda Civic RS 2023",
+        garageBranch: "hcm_q7",
+        serviceType: "bi_led_retrofit",
+        bookingDate: testDate,
+        timeSlot: "19:00",
+        orderCode: "YKC-DEMO-01",
+      }),
+    });
+    assert.equal(bk1Res.status, 201);
+    const bk1 = (await bk1Res.json()) as { item: { bookingCode: string; status: string } };
+    assert.match(bk1.item.bookingCode, /^BK-/);
+
+    const bk2Res = await fetch(`${baseUrl}/api/bookings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName: "Lê Minh",
+        phone: "0911222333",
+        vehicleInfo: "Mazda 3 2022",
+        garageBranch: "hcm_q7",
+        serviceType: "combo_full_night",
+        bookingDate: testDate,
+        timeSlot: "19:00",
+      }),
+    });
+    assert.equal(bk2Res.status, 201);
+
+    // 3rd booking in same slot must be rejected with 409
+    const bk3Res = await fetch(`${baseUrl}/api/bookings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName: "Khách Thứ 3",
+        phone: "0922333444",
+        vehicleInfo: "Toyota Camry 2023",
+        garageBranch: "hcm_q7",
+        serviceType: "beam_alignment",
+        bookingDate: testDate,
+        timeSlot: "19:00",
+      }),
+    });
+    assert.equal(bk3Res.status, 409);
+
+    // Lookup booking publicly
+    const lookupRes = await fetch(`${baseUrl}/api/bookings/${bk1.item.bookingCode}`);
+    assert.equal(lookupRes.status, 200);
+
+    // Admin confirms & moves booking to in_bay
+    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: process.env.ADMIN_USERNAME || "admin",
+        password: process.env.ADMIN_PASSWORD || "yokocho2026",
+      }),
+    });
+    const { token } = (await loginRes.json()) as { token: string };
+    const patchBkRes = await fetch(
+      `${baseUrl}/api/admin/bookings/${bk1.item.bookingCode}/status`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "in_bay" }),
+      },
+    );
+    assert.equal(patchBkRes.status, 200);
+    const patchedBk = (await patchBkRes.json()) as { item: { status: string } };
+    assert.equal(patchedBk.item.status, "in_bay");
+  });
 });

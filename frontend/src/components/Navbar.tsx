@@ -79,6 +79,9 @@ export function Navbar({ cartCount, apiConnected, onOpenCart, onOpenAi }: Navbar
           <a href="#reviews" className="transition-colors hover:text-[#ff4d5e]">
             Đánh Giá Xe
           </a>
+          <a href="#booking" className="transition-colors hover:text-amber-300">
+            Đặt Lịch Xưởng
+          </a>
           <a href="#order-lookup" className="transition-colors hover:text-[#ff4d5e]">
             Tra Đơn Hàng
           </a>

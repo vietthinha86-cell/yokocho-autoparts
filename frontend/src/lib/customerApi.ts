@@ -2,6 +2,7 @@ import { API_BASE_URL } from "@/lib/api";
 import type {
   CustomerGarageVehicle,
   CustomerProfile,
+  InstallationBookingRecord,
   OrderRecord,
 } from "@/types/autoparts";
 
@@ -123,6 +124,7 @@ export async function fetchCustomerSession(token: string): Promise<{
   unauthorized?: boolean;
   customer?: CustomerProfile;
   orders?: OrderRecord[];
+  bookings?: InstallationBookingRecord[];
   error?: string;
 }> {
   try {
@@ -136,6 +138,7 @@ export async function fetchCustomerSession(token: string): Promise<{
     const data = (await res.json()) as {
       customer?: CustomerProfile;
       orders?: OrderRecord[];
+      bookings?: InstallationBookingRecord[];
       error?: string;
     };
     if (!res.ok || !data.customer) {
@@ -145,6 +148,7 @@ export async function fetchCustomerSession(token: string): Promise<{
       ok: true,
       customer: data.customer,
       orders: Array.isArray(data.orders) ? data.orders : [],
+      bookings: Array.isArray(data.bookings) ? data.bookings : [],
     };
   } catch {
     return { ok: false, error: "Chưa kết nối được Backend API." };

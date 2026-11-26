@@ -9,7 +9,7 @@ import {
   updateStoredCartQty,
   usePersistentCart,
 } from "@/lib/cartStorage";
-import { FALLBACK_REVIEWS } from "@/lib/api";
+import { FALLBACK_REVIEWS, FALLBACK_VOUCHERS } from "@/lib/api";
 import type {
   AutoPartProduct,
   OrderRecord,
@@ -17,6 +17,7 @@ import type {
   ProductReviewRecord,
   VehicleBuildCombo,
   VehicleFitment,
+  VoucherRecord,
 } from "@/types/autoparts";
 import { CartDrawer } from "./CartDrawer";
 import { CompareModal } from "./CompareModal";
@@ -24,6 +25,7 @@ import { CustomerReviewsSection } from "./CustomerReviewsSection";
 import { FitmentBar } from "./FitmentBar";
 import { FloatingHudRail } from "./FloatingHudRail";
 import { Footer } from "./Footer";
+import { GarageBookingSection } from "./GarageBookingSection";
 import { HeroAlley } from "./HeroAlley";
 import { AkariAiDrawer } from "./AkariAiDrawer";
 import { matchesSmartProductQuery } from "@/lib/smartSearch";
@@ -41,6 +43,7 @@ interface StorefrontClientProps {
   initialFitments: VehicleFitment[];
   initialCombos: VehicleBuildCombo[];
   initialReviews?: ProductReviewRecord[];
+  initialVouchers?: VoucherRecord[];
   initialMake?: string;
   initialLookupCode?: string;
   apiConnected: boolean;
@@ -69,6 +72,7 @@ export function StorefrontClient({
   initialFitments,
   initialCombos,
   initialReviews = FALLBACK_REVIEWS,
+  initialVouchers = FALLBACK_VOUCHERS,
   initialMake = "",
   initialLookupCode,
   apiConnected,
@@ -86,6 +90,7 @@ export function StorefrontClient({
   const [aiOpen, setAiOpen] = useState(false);
   const [beamMode, setBeamMode] = useState<RainBeamColorMode>("combo");
   const [lastOrderCode, setLastOrderCode] = useState<string | undefined>(initialLookupCode);
+  const [bookingOrderCode, setBookingOrderCode] = useState<string | undefined>(undefined);
   const [catalogSweepKey, setCatalogSweepKey] = useState(0);
 
   function triggerCatalogPrism() {
@@ -185,6 +190,14 @@ export function StorefrontClient({
     setLastOrderCode(orderCode);
     if (typeof document !== "undefined") {
       const el = document.getElementById("order-lookup");
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  function handleJumpToBooking(orderCode: string) {
+    setBookingOrderCode(orderCode);
+    if (typeof document !== "undefined") {
+      const el = document.getElementById("booking");
       el?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
@@ -393,6 +406,11 @@ export function StorefrontClient({
           onAddCombo={handleAddCombo}
         />
 
+        <GarageBookingSection
+          key={bookingOrderCode ?? "booking-default"}
+          prefillOrderCode={bookingOrderCode}
+        />
+
         <CustomerReviewsSection
           initialReviews={initialReviews}
           products={initialProducts}
@@ -422,12 +440,14 @@ export function StorefrontClient({
       <CartDrawer
         open={cartOpen}
         items={cart}
+        availableVouchers={initialVouchers}
         onClose={() => setCartOpen(false)}
         onUpdateQty={updateStoredCartQty}
         onRemove={removeStoredCartItem}
         onClearCart={clearStoredCart}
         onOrderCreated={(order: OrderRecord) => setLastOrderCode(order.orderCode)}
         onJumpToLookup={handleJumpToLookup}
+        onJumpToBooking={handleJumpToBooking}
       />
 
       <AkariAiDrawer

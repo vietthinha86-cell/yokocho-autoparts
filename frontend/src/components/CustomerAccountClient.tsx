@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  CalendarDays,
   CarFront,
   CheckCircle2,
   ClipboardList,
+  Clock3,
   LogOut,
   MapPin,
   Package,
@@ -16,8 +18,10 @@ import {
   ShieldCheck,
   ShoppingBag,
   Sparkles,
+  Tag,
   Trash2,
   UserCheck,
+  Wrench,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { formatVnd } from "@/lib/api";
@@ -28,14 +32,58 @@ import {
   updateCustomerProfile,
 } from "@/lib/customerApi";
 import { useCustomerSession } from "@/lib/useCustomerSession";
-import type { AutoPartProduct, OrderRecord, VehicleFitment } from "@/types/autoparts";
+import type {
+  AutoPartProduct,
+  BookingStatus,
+  GarageBranchId,
+  InstallationServiceType,
+  OrderRecord,
+  VehicleFitment,
+} from "@/types/autoparts";
 
 interface CustomerAccountClientProps {
   products: AutoPartProduct[];
   fitments: VehicleFitment[];
 }
 
-type AccountTab = "orders" | "garage" | "profile";
+type AccountTab = "orders" | "bookings" | "garage" | "profile";
+
+const BOOKING_STATUS_META: Record<BookingStatus, { label: string; cls: string }> = {
+  pending: {
+    label: "Chờ xưởng xác nhận",
+    cls: "border-amber-600/70 bg-amber-950/60 text-amber-300",
+  },
+  confirmed: {
+    label: "Đã giữ khoang",
+    cls: "border-sky-600/70 bg-sky-950/60 text-sky-300",
+  },
+  in_bay: {
+    label: "Đang lên đèn trong khoang",
+    cls: "border-red-500/70 bg-red-950/60 text-red-200",
+  },
+  completed: {
+    label: "Hoàn tất lắp đặt",
+    cls: "border-emerald-600/70 bg-emerald-950/60 text-emerald-300",
+  },
+  cancelled: {
+    label: "Đã hủy",
+    cls: "border-zinc-700 bg-zinc-900 text-zinc-400",
+  },
+};
+
+const BRANCH_LABELS: Record<GarageBranchId, string> = {
+  hcm_q7: "Xưởng Đêm Quận 7 (TP.HCM)",
+  hcm_binhthanh: "Xưởng Bình Thạnh (TP.HCM)",
+  hn_caugiay: "Xưởng Cầu Giấy (Hà Nội)",
+};
+
+const SERVICE_LABELS: Record<InstallationServiceType, string> = {
+  bi_led_retrofit: "Lên Bi-LED Pha Cốt",
+  bi_fog_install: "Lắp Bi-Gầm Phá Sương 3000K",
+  tail_light_plug: "Đèn Hậu Khói / Còi Plug & Play",
+  combo_full_night: "Combo Full Đêm (Pha + Gầm + Hậu)",
+  beam_alignment: "Căn Chỉnh Đường Cắt Chống Chói",
+};
 
 const ORDER_STATUS_META: Record<
   OrderRecord["status"],
@@ -64,7 +112,7 @@ export function CustomerAccountClient({
   fitments,
 }: CustomerAccountClientProps) {
   const router = useRouter();
-  const { token, customer, orders, loading, reloadSession, logout } =
+  const { token, customer, orders, bookings, loading, reloadSession, logout } =
     useCustomerSession();
 
   const [activeTab, setActiveTab] = useState<AccountTab>("orders");
@@ -328,6 +376,19 @@ export function CustomerAccountClient({
 
           <button
             type="button"
+            onClick={() => setActiveTab("bookings")}
+            className={`chamfer-sm inline-flex cursor-pointer items-center gap-1.5 border px-4 py-2 transition ${
+              activeTab === "bookings"
+                ? "border-red-400 bg-[#e11d2e] text-white"
+                : "border-red-900/50 bg-[#12070b] text-zinc-300 hover:border-red-500"
+            }`}
+          >
+            <Wrench className="h-3.5 w-3.5" />
+            <span>Lịch Lắp Đặt ({bookings.length})</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab("garage")}
             className={`chamfer-sm inline-flex cursor-pointer items-center gap-1.5 border px-4 py-2 transition ${
               activeTab === "garage"
@@ -414,6 +475,14 @@ export function CustomerAccountClient({
                         <p className="font-mono text-lg font-bold text-[#ff4d5e]">
                           {formatVnd(order.totalVnd)}
                         </p>
+                        {order.voucherCode && (order.discountVnd ?? 0) > 0 && (
+                          <p className="inline-flex items-center gap-1 font-mono text-[10px] text-emerald-300">
+                            <Tag className="h-3 w-3" />
+                            <span>
+                              {order.voucherCode} (-{formatVnd(order.discountVnd ?? 0)})
+                            </span>
+                          </p>
+                        )}
                         <p className="font-mono text-[10px] text-zinc-400">
                           {order.shippingFeeVnd === 0
                             ? "Miễn phí vận chuyển"
@@ -457,6 +526,74 @@ export function CustomerAccountClient({
                         <ShoppingBag className="h-3.5 w-3.5" />
                         <span>Mua Lại Vào Giỏ</span>
                       </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {/* Tab 1.5: Garage Installation Bookings */}
+        {activeTab === "bookings" && (
+          <div className="mt-6 space-y-4">
+            {bookings.length === 0 ? (
+              <div className="yokocho-panel chamfer-md p-8 text-center text-xs text-zinc-300">
+                <Wrench className="mx-auto mb-3 h-8 w-8 text-amber-300" />
+                <p className="text-sm font-bold text-white">
+                  Bạn chưa có lịch hẹn lắp đặt nào tại xưởng.
+                </p>
+                <p className="mt-1 text-zinc-400">
+                  Giữ khoang trước để được ưu tiên lắp giắc zin &amp; canh đường cắt Laser không phải chờ đợi.
+                </p>
+                <Link
+                  href="/#booking"
+                  className="chamfer-sm mt-4 inline-flex items-center gap-1.5 bg-[#e11d2e] px-4 py-2 font-bold text-white"
+                >
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  <span>Đặt Lịch Lắp Đặt Ngay</span>
+                </Link>
+              </div>
+            ) : (
+              bookings.map((bk) => {
+                const statusMeta = BOOKING_STATUS_META[bk.status];
+                return (
+                  <div
+                    key={bk.bookingCode}
+                    className="yokocho-panel chamfer-md flex flex-wrap items-start justify-between gap-4 border border-red-900/55 p-5 text-xs"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-sm font-bold text-amber-300">
+                          {bk.bookingCode}
+                        </span>
+                        <span
+                          className={`border px-2 py-0.5 font-mono text-[10px] font-bold ${statusMeta.cls}`}
+                        >
+                          {statusMeta.label}
+                        </span>
+                        {bk.orderCode && (
+                          <span className="border border-red-800/60 bg-red-950/40 px-2 py-0.5 font-mono text-[10px] text-red-200">
+                            Đơn {bk.orderCode}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-display text-base font-bold text-white">
+                        {SERVICE_LABELS[bk.serviceType]}
+                      </h3>
+                      <p className="text-zinc-300">
+                        Xe: <strong className="text-white">{bk.vehicleInfo}</strong> • Cơ sở:{" "}
+                        <span className="text-amber-200">{BRANCH_LABELS[bk.garageBranch]}</span>
+                      </p>
+                      {bk.note && <p className="text-zinc-400">Ghi chú: {bk.note}</p>}
+                    </div>
+
+                    <div className="text-right font-mono">
+                      <p className="inline-flex items-center gap-1.5 text-sm font-bold text-[#ff4d5e]">
+                        <Clock3 className="h-4 w-4" />
+                        <span>{bk.timeSlot}</span>
+                      </p>
+                      <p className="mt-0.5 text-xs text-zinc-300">{bk.bookingDate}</p>
                     </div>
                   </div>
                 );

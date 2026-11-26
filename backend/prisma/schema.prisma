@@ -64,6 +64,8 @@ model Order {
   shippingAddress String
   note            String?
   subtotalVnd     Int
+  discountVnd     Int         @default(0)
+  voucherCode     String?
   shippingFeeVnd  Int
   totalVnd        Int
   paymentStatus   String      @default("unpaid")
@@ -142,5 +144,43 @@ model CustomerUser {
   garageVehiclesJson Json     @default("[]")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model Voucher {
+  id             String    @id @default(cuid())
+  code           String    @unique
+  title          String
+  descriptionVi  String
+  discountType   String
+  discountValue  Int
+  minOrderVnd    Int       @default(0)
+  maxDiscountVnd Int?
+  usageLimit     Int?
+  usedCount      Int       @default(0)
+  active         Boolean   @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+}
+
+model InstallationBooking {
+  id           String   @id @default(cuid())
+  bookingCode  String   @unique
+  customerId   String?
+  orderCode    String?
+  customerName String
+  phone        String
+  vehicleInfo  String
+  garageBranch String
+  serviceType  String
+  bookingDate  String
+  timeSlot     String
+  note         String?
+  status       String   @default("pending")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([bookingDate, garageBranch])
+  @@index([customerId])
+  @@index([phone])
 }
 

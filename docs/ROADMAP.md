@@ -57,7 +57,8 @@ Dự án được chia thành **4 Phase** rõ ràng để bạn có thể phát 
 - [x] Trang "Xe Đã Lên Đèn" (Gallery cấu hình combo thực tế cho Civic, Bán tải Custom, Mazda 3...)
 - [x] Chatbot `AI Thợ Đêm` Multi-Provider AI Thực Tế (Gemini Vision / OpenAI-Groq-OpenRouter / Local Ollama `qwen2.5:3b` + `qwen2.5vl:3b` + Fallback) kèm Tab cấu hình & test AI trong `/admin` (`AkariAiDrawer`, `/api/ai/status`, `/api/admin/ai-config`)
 - [x] Tối ưu `next/image` (AVIF/WebP), dynamic `sitemap.xml`, `robots.txt`, JSON-LD `Product`/`AggregateRating` & OpenGraph SEO + ổn định AI Ollama warmup
-- [x] Cổng thành viên (`/dang-nhap` & `/tai-khoan` gồm Lịch Sử Đơn Hàng, Gara Xe Của Tôi, Hồ Sơ & tự điền checkout/review mà vẫn giữ Guest Checkout song song)
+- [x] Cổng thành viên (`/dang-nhap` & `/tai-khoan` gồm Lịch Sử Đơn Hàng, Lịch Lắp Đặt, Gara Xe Của Tôi, Hồ Sơ & tự điền checkout/review mà vẫn giữ Guest Checkout song song)
+- [x] **Phase 3.5 — Bán Hàng Thực Chiến:** Mã Giảm Giá / Voucher (`Voucher` PostgreSQL + áp mã 1 chạm trong Giỏ hàng + trừ tiền thực tế trên Server & VietQR + CRUD tại `/admin`) và Đặt Lịch Lắp Đặt Tại Xưởng (`InstallationBooking`, kiểm tra khoang trống thời gian thực tối đa 2 xe/khung giờ, ca 19:00 test đèn đêm, quản lý tại `/tai-khoan` & `/admin`)
 
 ---
 

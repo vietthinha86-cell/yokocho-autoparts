@@ -9,9 +9,11 @@ import {
   BellRing,
   Bot,
   Box,
+  CalendarDays,
   Camera,
   CheckCircle2,
   ClipboardList,
+  Clock3,
   Cpu,
   Database,
   EyeOff,
@@ -23,8 +25,10 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
+  Tag,
   Trash2,
   UploadCloud,
+  Wrench,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -32,36 +36,79 @@ import { formatVnd } from "@/lib/api";
 import {
   clearStoredAdminToken,
   createAdminProduct,
+  createAdminVoucher,
   deleteAdminProduct,
   deleteAdminReview,
+  deleteAdminVoucher,
   fetchAdminAiConfig,
+  fetchAdminBookings,
   fetchAdminReviews,
   fetchAdminSession,
+  fetchAdminVouchers,
   getStoredAdminToken,
   requestAdminAiDraft,
   saveAdminAiConfig,
   signAdminMediaUpload,
   testAdminAiConnection,
+  toggleAdminVoucher,
+  updateAdminBookingStatus,
   updateAdminOrderStatus,
   updateAdminProduct,
   updateAdminReviewStatus,
 } from "@/lib/adminApi";
 import type {
   AdminAiConfigResponse,
+  AdminBookingsResponse,
   AdminOverviewResponse,
   AdminProfile,
   AdminReviewsResponse,
   AiModePreference,
   AiProviderId,
   AutoPartProduct,
+  BookingStatus,
+  GarageBranchId,
+  InstallationBookingRecord,
+  InstallationServiceType,
   OrderRecord,
   PartCategory,
   ProductReviewRecord,
   ReviewStatus,
   StockStatus,
+  VoucherDiscountType,
+  VoucherRecord,
 } from "@/types/autoparts";
 
-type AdminTab = "orders" | "inventory" | "create" | "logs" | "reviews" | "ai";
+type AdminTab =
+  | "orders"
+  | "bookings"
+  | "vouchers"
+  | "inventory"
+  | "create"
+  | "logs"
+  | "reviews"
+  | "ai";
+
+const BOOKING_STATUS_OPTIONS: Array<{ value: BookingStatus; label: string }> = [
+  { value: "pending", label: "Chờ xác nhận" },
+  { value: "confirmed", label: "Đã giữ khoang" },
+  { value: "in_bay", label: "Đang lên đèn" },
+  { value: "completed", label: "Hoàn tất" },
+  { value: "cancelled", label: "Đã hủy" },
+];
+
+const BRANCH_SHORT: Record<GarageBranchId, string> = {
+  hcm_q7: "Xưởng Q.7 TP.HCM",
+  hcm_binhthanh: "Xưởng Bình Thạnh",
+  hn_caugiay: "Xưởng Cầu Giấy HN",
+};
+
+const SERVICE_SHORT: Record<InstallationServiceType, string> = {
+  bi_led_retrofit: "Lên Bi-LED Pha Cốt",
+  bi_fog_install: "Lắp Bi-Gầm 3000K",
+  tail_light_plug: "Đèn Hậu / Còi Plug & Play",
+  combo_full_night: "Combo Full Đêm",
+  beam_alignment: "Căn Chỉnh Tiêu Cự",
+};
 
 const ORDER_STATUS_LABELS: Array<{ value: OrderRecord["status"]; label: string }> = [
   { value: "pending_confirm", label: "Chờ xác nhận giắc" },
@@ -77,6 +124,23 @@ export function AdminDashboardClient() {
   const [overview, setOverview] = useState<AdminOverviewResponse | null>(null);
   const [products, setProducts] = useState<AutoPartProduct[]>([]);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [vouchers, setVouchers] = useState<VoucherRecord[]>([]);
+  const [bookings, setBookings] = useState<InstallationBookingRecord[]>([]);
+  const [bookingCounts, setBookingCounts] = useState<AdminBookingsResponse["counts"]>({
+    all: 0,
+    pending: 0,
+    confirmed: 0,
+    in_bay: 0,
+    completed: 0,
+    cancelled: 0,
+  });
+  const [newVoucherCode, setNewVoucherCode] = useState("");
+  const [newVoucherTitle, setNewVoucherTitle] = useState("");
+  const [newVoucherType, setNewVoucherType] = useState<VoucherDiscountType>("fixed");
+  const [newVoucherValue, setNewVoucherValue] = useState(250000);
+  const [newVoucherMinOrder, setNewVoucherMinOrder] = useState(2500000);
+  const [newVoucherMaxDiscount, setNewVoucherMaxDiscount] = useState(500000);
+  const [newVoucherLimit, setNewVoucherLimit] = useState(50);
   const [reviews, setReviews] = useState<ProductReviewRecord[]>([]);
   const [reviewCounts, setReviewCounts] = useState<AdminReviewsResponse["counts"]>({
     all: 0,
@@ -160,10 +224,12 @@ export function AdminDashboardClient() {
 
   const refreshData = useCallback(
     async (activeToken: string) => {
-      const [res, aiRes, revRes] = await Promise.all([
+      const [res, aiRes, revRes, vchRes, bkRes] = await Promise.all([
         fetchAdminSession(activeToken),
         fetchAdminAiConfig(activeToken),
         fetchAdminReviews(activeToken, "all"),
+        fetchAdminVouchers(activeToken),
+        fetchAdminBookings(activeToken),
       ]);
       if (res.unauthorized) {
         clearStoredAdminToken();
@@ -184,6 +250,13 @@ export function AdminDashboardClient() {
         setReviews(revRes.data.items);
         setReviewCounts(revRes.data.counts);
       }
+      if (vchRes.ok && vchRes.items) {
+        setVouchers(vchRes.items);
+      }
+      if (bkRes.ok && bkRes.data) {
+        setBookings(bkRes.data.items);
+        setBookingCounts(bkRes.data.counts);
+      }
       setLoading(false);
     },
     [applyAiConfigState, router],
@@ -200,7 +273,9 @@ export function AdminDashboardClient() {
       fetchAdminSession(stored),
       fetchAdminAiConfig(stored),
       fetchAdminReviews(stored, "all"),
-    ]).then(([res, aiRes, revRes]) => {
+      fetchAdminVouchers(stored),
+      fetchAdminBookings(stored),
+    ]).then(([res, aiRes, revRes, vchRes, bkRes]) => {
       if (cancelled) return;
       if (res.unauthorized || !res.ok) {
         clearStoredAdminToken();
@@ -220,6 +295,13 @@ export function AdminDashboardClient() {
       if (revRes.ok && revRes.data) {
         setReviews(revRes.data.items);
         setReviewCounts(revRes.data.counts);
+      }
+      if (vchRes.ok && vchRes.items) {
+        setVouchers(vchRes.items);
+      }
+      if (bkRes.ok && bkRes.data) {
+        setBookings(bkRes.data.items);
+        setBookingCounts(bkRes.data.counts);
       }
       setLoading(false);
     });
@@ -282,6 +364,63 @@ export function AdminDashboardClient() {
     }
     await refreshData(token);
     showToast(`Đã cập nhật ${orderCode} → ${nextStatus}`);
+  }
+
+  async function handleBookingStatusChange(bookingCode: string, nextStatus: BookingStatus) {
+    if (!token) return;
+    const res = await updateAdminBookingStatus(token, bookingCode, nextStatus);
+    if (!res.ok) {
+      showToast(res.error ?? "Cập nhật lịch lắp đặt thất bại.");
+      return;
+    }
+    await refreshData(token);
+    showToast(`Đã cập nhật lịch ${bookingCode} → ${nextStatus}`);
+  }
+
+  async function handleCreateVoucher(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    const res = await createAdminVoucher(token, {
+      code: newVoucherCode.trim().toUpperCase(),
+      title: newVoucherTitle.trim(),
+      discountType: newVoucherType,
+      discountValue: Number(newVoucherValue),
+      minOrderVnd: Number(newVoucherMinOrder) || 0,
+      maxDiscountVnd: newVoucherType === "percent" ? Number(newVoucherMaxDiscount) || undefined : undefined,
+      usageLimit: Number(newVoucherLimit) || undefined,
+    });
+    if (!res.ok || !res.item) {
+      showToast(res.error ?? "Tạo mã giảm giá thất bại.");
+      return;
+    }
+    setNewVoucherCode("");
+    setNewVoucherTitle("");
+    await refreshData(token);
+    showToast(`Đã tạo mã giảm giá ${res.item.code}!`);
+  }
+
+  async function handleToggleVoucher(voucher: VoucherRecord) {
+    if (!token) return;
+    const res = await toggleAdminVoucher(token, voucher.id, !voucher.active);
+    if (!res.ok) {
+      showToast(res.error ?? "Cập nhật trạng thái mã thất bại.");
+      return;
+    }
+    await refreshData(token);
+    showToast(
+      !voucher.active ? `Đã kích hoạt mã ${voucher.code}` : `Đã tạm ngưng mã ${voucher.code}`,
+    );
+  }
+
+  async function handleDeleteVoucher(voucher: VoucherRecord) {
+    if (!token) return;
+    const res = await deleteAdminVoucher(token, voucher.id);
+    if (!res.ok) {
+      showToast(res.error ?? "Xóa mã thất bại.");
+      return;
+    }
+    await refreshData(token);
+    showToast(`Đã xóa mã ${voucher.code}`);
   }
 
   async function handleUpdateReviewStatus(reviewId: string, nextStatus: ReviewStatus) {
@@ -568,6 +707,37 @@ export function AdminDashboardClient() {
 
           <button
             type="button"
+            onClick={() => setActiveTab("bookings")}
+            className={`chamfer-sm inline-flex cursor-pointer items-center gap-1.5 border px-4 py-2 transition ${
+              activeTab === "bookings"
+                ? "border-red-400 bg-[#e11d2e] text-white"
+                : "border-red-900/50 bg-[#12070b] text-zinc-300 hover:border-red-500"
+            }`}
+          >
+            <Wrench className="h-3.5 w-3.5" />
+            <span>Lịch Lắp Đặt ({bookingCounts.all})</span>
+            {bookingCounts.pending > 0 && (
+              <span className="ml-1 rounded-full bg-amber-400 px-1.5 py-0.5 font-mono text-[10px] font-black text-black">
+                {bookingCounts.pending} mới
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("vouchers")}
+            className={`chamfer-sm inline-flex cursor-pointer items-center gap-1.5 border px-4 py-2 transition ${
+              activeTab === "vouchers"
+                ? "border-red-400 bg-[#e11d2e] text-white"
+                : "border-red-900/50 bg-[#12070b] text-zinc-300 hover:border-red-500"
+            }`}
+          >
+            <Tag className="h-3.5 w-3.5" />
+            <span>Mã Giảm Giá ({vouchers.length})</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab("inventory")}
             className={`chamfer-sm inline-flex cursor-pointer items-center gap-1.5 border px-4 py-2 transition ${
               activeTab === "inventory"
@@ -691,6 +861,11 @@ export function AdminDashboardClient() {
                       <p className="font-mono text-base font-bold text-[#ff4d5e]">
                         {formatVnd(order.totalVnd)}
                       </p>
+                      {order.voucherCode && (order.discountVnd ?? 0) > 0 && (
+                        <p className="font-mono text-[10px] text-emerald-300">
+                          {order.voucherCode} (-{formatVnd(order.discountVnd ?? 0)})
+                        </p>
+                      )}
                     </div>
                     <select
                       value={order.status}
@@ -713,6 +888,229 @@ export function AdminDashboardClient() {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {/* Tab 1.5: Garage Installation Bookings */}
+        {activeTab === "bookings" && (
+          <div className="mt-6 space-y-3">
+            {bookings.length === 0 ? (
+              <div className="yokocho-panel chamfer-md p-10 text-center text-xs text-zinc-400">
+                Chưa có lịch hẹn lắp đặt nào tại xưởng.
+              </div>
+            ) : (
+              bookings.map((bk) => (
+                <div
+                  key={bk.bookingCode}
+                  className="yokocho-panel chamfer-sm flex flex-col justify-between gap-4 border border-red-900/50 p-4 text-xs lg:flex-row lg:items-center"
+                >
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-sm font-bold text-amber-300">
+                        {bk.bookingCode}
+                      </span>
+                      <span className="inline-flex items-center gap-1 border border-red-800/60 bg-red-950/50 px-2 py-0.5 font-mono text-[10px] font-bold text-red-200">
+                        <CalendarDays className="h-3 w-3" />
+                        {bk.bookingDate}
+                      </span>
+                      <span className="inline-flex items-center gap-1 border border-amber-500/60 bg-amber-950/50 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-300">
+                        <Clock3 className="h-3 w-3" />
+                        {bk.timeSlot}
+                      </span>
+                      {bk.orderCode && (
+                        <span className="border border-emerald-700/60 bg-emerald-950/50 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
+                          Đơn {bk.orderCode}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-zinc-200">
+                      <strong>{bk.customerName}</strong> • {bk.phone} •{" "}
+                      <span className="text-amber-200">{bk.vehicleInfo}</span>
+                    </p>
+                    <p className="text-zinc-300">
+                      {BRANCH_SHORT[bk.garageBranch]} —{" "}
+                      <strong className="text-white">{SERVICE_SHORT[bk.serviceType]}</strong>
+                    </p>
+                    {bk.note && <p className="text-zinc-400">Ghi chú: {bk.note}</p>}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={bk.status}
+                      onChange={(e) =>
+                        handleBookingStatusChange(bk.bookingCode, e.target.value as BookingStatus)
+                      }
+                      aria-label={`Đổi trạng thái lịch ${bk.bookingCode}`}
+                      className="cursor-pointer border border-red-700/70 bg-[#12070b] px-3 py-2 font-mono text-xs font-semibold text-white focus:border-red-400 focus:outline-none"
+                    >
+                      {BOOKING_STATUS_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Tab 1.6: Promo Vouchers Manager */}
+        {activeTab === "vouchers" && (
+          <div className="mt-6 grid gap-6 lg:grid-cols-12">
+            <div className="space-y-3 lg:col-span-7">
+              {vouchers.map((v) => (
+                <div
+                  key={v.id}
+                  className="yokocho-panel chamfer-sm flex flex-wrap items-center justify-between gap-4 border border-red-900/50 p-4 text-xs"
+                >
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="border border-amber-500/70 bg-amber-950/45 px-2.5 py-0.5 font-mono text-sm font-bold text-amber-300">
+                        {v.code}
+                      </span>
+                      <span
+                        className={`border px-2 py-0.5 font-mono text-[10px] font-bold ${
+                          v.active
+                            ? "border-emerald-600/70 bg-emerald-950/60 text-emerald-300"
+                            : "border-zinc-700 bg-zinc-900 text-zinc-400"
+                        }`}
+                      >
+                        {v.active ? "ĐANG CHẠY" : "TẠM NGƯNG"}
+                      </span>
+                      <span className="font-mono text-[11px] text-zinc-400">
+                        Đã dùng: {v.usedCount}
+                        {v.usageLimit ? `/${v.usageLimit}` : ""}
+                      </span>
+                    </div>
+                    <p className="font-semibold text-white">{v.title}</p>
+                    <p className="text-[11px] text-zinc-400">
+                      Giảm:{" "}
+                      <strong className="text-[#ff4d5e]">
+                        {v.discountType === "percent"
+                          ? `${v.discountValue}%${v.maxDiscountVnd ? ` (tối đa ${formatVnd(v.maxDiscountVnd)})` : ""}`
+                          : formatVnd(v.discountValue)}
+                      </strong>{" "}
+                      • Đơn tối thiểu: {formatVnd(v.minOrderVnd)}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleVoucher(v)}
+                      className="chamfer-sm cursor-pointer border border-amber-500/60 bg-amber-950/35 px-3 py-1.5 font-semibold text-amber-200 hover:bg-amber-900/50"
+                    >
+                      {v.active ? "Tạm Ngưng" : "Bật Lại"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteVoucher(v)}
+                      aria-label={`Xóa mã ${v.code}`}
+                      className="chamfer-sm cursor-pointer border border-red-800/70 bg-red-950/60 p-2 text-red-300 hover:bg-[#e11d2e] hover:text-white"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <form
+              onSubmit={handleCreateVoucher}
+              className="yokocho-panel chamfer-md space-y-3.5 border border-red-800/60 p-5 text-xs lg:col-span-5"
+            >
+              <p className="font-mono text-[11px] font-bold tracking-widest text-[#ff4d5e] uppercase">
+                NEW VOUCHER // Tạo Mã Giảm Giá Mới
+              </p>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-zinc-300">Mã code (A-Z, 0-9) *</label>
+                  <input
+                    required
+                    value={newVoucherCode}
+                    onChange={(e) => setNewVoucherCode(e.target.value.toUpperCase())}
+                    placeholder="VD: NIGHT250K"
+                    className="w-full border border-red-900/60 bg-[#080305] px-3 py-2 font-mono text-amber-200 uppercase focus:border-red-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-zinc-300">Loại giảm giá</label>
+                  <select
+                    value={newVoucherType}
+                    onChange={(e) => setNewVoucherType(e.target.value as VoucherDiscountType)}
+                    className="w-full border border-red-900/60 bg-[#080305] px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                  >
+                    <option value="fixed">Giảm tiền thẳng (VNĐ)</option>
+                    <option value="percent">Giảm theo phần trăm (%)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-zinc-300">Tiêu đề chương trình *</label>
+                <input
+                  required
+                  value={newVoucherTitle}
+                  onChange={(e) => setNewVoucherTitle(e.target.value)}
+                  placeholder="VD: Flash Sale Đêm Thứ 6 — Trừ 250K"
+                  className="w-full border border-red-900/60 bg-[#080305] px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-zinc-300">
+                    {newVoucherType === "percent" ? "Phần trăm giảm (1-90)" : "Số tiền giảm (VNĐ)"}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={newVoucherValue}
+                    onChange={(e) => setNewVoucherValue(Number(e.target.value))}
+                    className="w-full border border-red-900/60 bg-[#080305] px-3 py-2 font-mono text-white focus:border-red-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-zinc-300">Đơn tối thiểu (VNĐ)</label>
+                  <input
+                    type="number"
+                    value={newVoucherMinOrder}
+                    onChange={(e) => setNewVoucherMinOrder(Number(e.target.value))}
+                    className="w-full border border-red-900/60 bg-[#080305] px-3 py-2 font-mono text-white focus:border-red-500 focus:outline-none"
+                  />
+                </div>
+                {newVoucherType === "percent" && (
+                  <div>
+                    <label className="mb-1 block text-zinc-300">Giảm tối đa (VNĐ)</label>
+                    <input
+                      type="number"
+                      value={newVoucherMaxDiscount}
+                      onChange={(e) => setNewVoucherMaxDiscount(Number(e.target.value))}
+                      className="w-full border border-red-900/60 bg-[#080305] px-3 py-2 font-mono text-white focus:border-red-500 focus:outline-none"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="mb-1 block text-zinc-300">Giới hạn lượt dùng</label>
+                  <input
+                    type="number"
+                    value={newVoucherLimit}
+                    onChange={(e) => setNewVoucherLimit(Number(e.target.value))}
+                    className="w-full border border-red-900/60 bg-[#080305] px-3 py-2 font-mono text-white focus:border-red-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="chamfer-sm w-full cursor-pointer bg-gradient-to-r from-[#c81628] to-[#ff2e43] py-2.5 font-bold text-white shadow-[0_0_20px_rgba(225,29,46,0.45)]"
+              >
+                Phát Hành Mã Giảm Giá
+              </button>
+            </form>
           </div>
         )}
 

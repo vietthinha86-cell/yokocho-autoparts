@@ -14,8 +14,9 @@ const HUD_SECTIONS: HudSection[] = [
   { id: "catalog", code: "03", label: "KỆ HÀNG" },
   { id: "simulator", code: "04", label: "THỬ ĐÈN" },
   { id: "builds", code: "05", label: "COMBO XE" },
-  { id: "reviews", code: "06", label: "ĐÁNH GIÁ" },
-  { id: "order-lookup", code: "07", label: "ĐƠN HÀNG" },
+  { id: "booking", code: "06", label: "ĐẶT LỊCH" },
+  { id: "reviews", code: "07", label: "ĐÁNH GIÁ" },
+  { id: "order-lookup", code: "08", label: "ĐƠN HÀNG" },
 ];
 
 export function FloatingHudRail() {
@@ -74,7 +75,9 @@ export function FloatingHudRail() {
           <span className="h-1.5 w-1.5 rounded-full bg-[#ff2e43] shadow-[0_0_8px_#ff2e43]" />
           SECTOR HUD
         </span>
-        <span>{String(activeIdx + 1).padStart(2, "0")}/07</span>
+        <span>
+          {String(activeIdx + 1).padStart(2, "0")}/{String(HUD_SECTIONS.length).padStart(2, "0")}
+        </span>
       </div>
 
       <nav className="flex flex-col gap-0.5">

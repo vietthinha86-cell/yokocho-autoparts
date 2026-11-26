@@ -84,6 +84,8 @@ export interface OrderRecord {
   note?: string;
   items: OrderItemRecord[];
   subtotalVnd: number;
+  discountVnd?: number;
+  voucherCode?: string;
   shippingFeeVnd: number;
   totalVnd: number;
   paymentStatus?: "unpaid" | "paid";
@@ -131,6 +133,9 @@ export interface AdminOverviewResponse {
     pendingReviews?: number;
     approvedReviews?: number;
     totalCustomers?: number;
+    activeVouchers?: number;
+    pendingBookings?: number;
+    totalBookings?: number;
   };
   recentNotifications: Array<{
     channel: string;
@@ -249,5 +254,76 @@ export interface AdminReviewsResponse {
     pending: number;
     approved: number;
     rejected: number;
+  };
+}
+
+export type VoucherDiscountType = "percent" | "fixed";
+
+export interface VoucherRecord {
+  id: string;
+  code: string;
+  title: string;
+  descriptionVi: string;
+  discountType: VoucherDiscountType;
+  discountValue: number;
+  minOrderVnd: number;
+  maxDiscountVnd?: number;
+  usageLimit?: number;
+  usedCount: number;
+  active: boolean;
+  expiresAt?: string;
+  createdAt: string;
+}
+
+export type GarageBranchId = "hcm_q7" | "hcm_binhthanh" | "hn_caugiay";
+
+export type InstallationServiceType =
+  | "bi_led_retrofit"
+  | "bi_fog_install"
+  | "tail_light_plug"
+  | "combo_full_night"
+  | "beam_alignment";
+
+export type BookingStatus =
+  | "pending"
+  | "confirmed"
+  | "in_bay"
+  | "completed"
+  | "cancelled";
+
+export interface InstallationBookingRecord {
+  id: string;
+  bookingCode: string;
+  customerId?: string;
+  orderCode?: string;
+  customerName: string;
+  phone: string;
+  vehicleInfo: string;
+  garageBranch: GarageBranchId;
+  serviceType: InstallationServiceType;
+  bookingDate: string;
+  timeSlot: string;
+  note?: string;
+  status: BookingStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BookingSlotAvailability {
+  timeSlot: string;
+  bookedCount: number;
+  remainingBays: number;
+  available: boolean;
+}
+
+export interface AdminBookingsResponse {
+  items: InstallationBookingRecord[];
+  counts: {
+    all: number;
+    pending: number;
+    confirmed: number;
+    in_bay: number;
+    completed: number;
+    cancelled: number;
   };
 }

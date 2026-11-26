@@ -6,7 +6,9 @@ import {
   AUTO_PARTS_CATALOG,
   DEFAULT_DEMO_CUSTOMER_SEED,
   DEFAULT_DEMO_ORDERS,
+  DEFAULT_INSTALLATION_BOOKINGS,
   DEFAULT_PRODUCT_REVIEWS,
+  DEFAULT_VOUCHERS,
   VEHICLE_COMBOS,
   VEHICLE_FITMENTS,
 } from "../src/data/catalog.ts";
@@ -335,10 +337,55 @@ export async function seedDatabase(externalPrisma?: PrismaClient): Promise<void>
     });
   }
 
+  for (const vch of DEFAULT_VOUCHERS) {
+    await prisma.voucher.upsert({
+      where: { code: vch.code },
+      update: {},
+      create: {
+        id: vch.id,
+        code: vch.code,
+        title: vch.title,
+        descriptionVi: vch.descriptionVi,
+        discountType: vch.discountType,
+        discountValue: vch.discountValue,
+        minOrderVnd: vch.minOrderVnd,
+        maxDiscountVnd: vch.maxDiscountVnd ?? null,
+        usageLimit: vch.usageLimit ?? null,
+        usedCount: vch.usedCount,
+        active: vch.active,
+        expiresAt: vch.expiresAt ? new Date(vch.expiresAt) : null,
+        createdAt: new Date(vch.createdAt),
+      },
+    });
+  }
+
+  for (const bk of DEFAULT_INSTALLATION_BOOKINGS) {
+    await prisma.installationBooking.upsert({
+      where: { bookingCode: bk.bookingCode },
+      update: {},
+      create: {
+        id: bk.id,
+        bookingCode: bk.bookingCode,
+        customerId: bk.customerId ?? null,
+        orderCode: bk.orderCode ?? null,
+        customerName: bk.customerName,
+        phone: bk.phone,
+        vehicleInfo: bk.vehicleInfo,
+        garageBranch: bk.garageBranch,
+        serviceType: bk.serviceType,
+        bookingDate: bk.bookingDate,
+        timeSlot: bk.timeSlot,
+        note: bk.note ?? null,
+        status: bk.status,
+        createdAt: new Date(bk.createdAt),
+      },
+    });
+  }
+
   await syncRuntimeJsonSnapshot(prisma);
 
   console.log(
-    `==> Seeded ${AUTO_PARTS_CATALOG.length} products, ${VEHICLE_FITMENTS.length} fitments, ${VEHICLE_COMBOS.length} combos, ${DEFAULT_PRODUCT_REVIEWS.length} reviews, demo customer, and admin '${adminUsername}'.`,
+    `==> Seeded ${AUTO_PARTS_CATALOG.length} products, ${VEHICLE_FITMENTS.length} fitments, ${VEHICLE_COMBOS.length} combos, ${DEFAULT_PRODUCT_REVIEWS.length} reviews, ${DEFAULT_VOUCHERS.length} vouchers, ${DEFAULT_INSTALLATION_BOOKINGS.length} bookings, demo customer, and admin '${adminUsername}'.`,
   );
 
   if (!externalPrisma) {

@@ -1,5 +1,6 @@
 import type {
   AdminAiConfigResponse,
+  AdminBookingsResponse,
   AdminOverviewResponse,
   AdminProfile,
   AdminReviewsResponse,
@@ -7,10 +8,14 @@ import type {
   AiModePreference,
   AiProviderId,
   AutoPartProduct,
+  BookingStatus,
+  InstallationBookingRecord,
   OrderRecord,
   PartCategory,
   ProductReviewRecord,
   ReviewStatus,
+  VoucherDiscountType,
+  VoucherRecord,
 } from "@/types/autoparts";
 
 const API_BASE_URL =
@@ -376,5 +381,121 @@ export async function deleteAdminReview(
     return { ok: false, error: data.error ?? "Xóa đánh giá thất bại." };
   }
   return { ok: true };
+}
+
+export async function fetchAdminVouchers(
+  token: string,
+): Promise<{ ok: boolean; items?: VoucherRecord[]; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/vouchers`, {
+      headers: authHeaders(token, false),
+      cache: "no-store",
+    });
+    const data = (await res.json()) as { items?: VoucherRecord[]; error?: string };
+    if (!res.ok || !Array.isArray(data.items)) {
+      return { ok: false, error: data.error ?? "Không tải được danh sách mã giảm giá." };
+    }
+    return { ok: true, items: data.items };
+  } catch {
+    return { ok: false, error: "Không kết nối được backend voucher." };
+  }
+}
+
+export async function createAdminVoucher(
+  token: string,
+  payload: {
+    code: string;
+    title: string;
+    descriptionVi?: string;
+    discountType: VoucherDiscountType;
+    discountValue: number;
+    minOrderVnd?: number;
+    maxDiscountVnd?: number;
+    usageLimit?: number;
+  },
+): Promise<{ ok: boolean; item?: VoucherRecord; error?: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/admin/vouchers`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  const data = (await res.json()) as { item?: VoucherRecord; error?: string };
+  if (!res.ok || !data.item) {
+    return { ok: false, error: data.error ?? "Không thể tạo mã giảm giá." };
+  }
+  return { ok: true, item: data.item };
+}
+
+export async function toggleAdminVoucher(
+  token: string,
+  id: string,
+  active: boolean,
+): Promise<{ ok: boolean; item?: VoucherRecord; error?: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/admin/vouchers/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ active }),
+  });
+  const data = (await res.json()) as { item?: VoucherRecord; error?: string };
+  if (!res.ok || !data.item) {
+    return { ok: false, error: data.error ?? "Cập nhật trạng thái voucher thất bại." };
+  }
+  return { ok: true, item: data.item };
+}
+
+export async function deleteAdminVoucher(
+  token: string,
+  id: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/admin/vouchers/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: authHeaders(token, false),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    return { ok: false, error: data.error ?? "Xóa voucher thất bại." };
+  }
+  return { ok: true };
+}
+
+export async function fetchAdminBookings(
+  token: string,
+): Promise<{ ok: boolean; data?: AdminBookingsResponse; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/bookings`, {
+      headers: authHeaders(token, false),
+      cache: "no-store",
+    });
+    const data = (await res.json()) as AdminBookingsResponse & { error?: string };
+    if (!res.ok || !Array.isArray(data.items)) {
+      return { ok: false, error: data.error ?? "Không tải được danh sách lịch hẹn." };
+    }
+    return { ok: true, data };
+  } catch {
+    return { ok: false, error: "Không kết nối được backend lịch hẹn xưởng." };
+  }
+}
+
+export async function updateAdminBookingStatus(
+  token: string,
+  bookingCode: string,
+  status: BookingStatus,
+): Promise<{ ok: boolean; item?: InstallationBookingRecord; error?: string }> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/admin/bookings/${encodeURIComponent(bookingCode)}/status`,
+    {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify({ status }),
+    },
+  );
+  const data = (await res.json()) as {
+    item?: InstallationBookingRecord;
+    error?: string;
+  };
+  if (!res.ok || !data.item) {
+    return { ok: false, error: data.error ?? "Cập nhật trạng thái lịch hẹn thất bại." };
+  }
+  return { ok: true, item: data.item };
 }
 
